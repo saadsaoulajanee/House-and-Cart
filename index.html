@@ -79,8 +79,8 @@ db={...fresh(),...db,cleaningInventory:db.cleaningInventory||[],cleaningShopping
 for(const x of db.ingredients){if(x.category==='Spices')x.isSpice=true}
 for(const d of DEFAULT_ING.filter(x=>x[4]))if(!db.ingredients.some(i=>norm(i.name)===norm(d[0])))db.ingredients.push({id:uid(),name:d[0],category:'Spices',unit:'',aliases:d[3],isSpice:true,custom:false});
 let view='home',mealFilter='All',shopFilter='All',appMode='kitchen';
-const SUPABASE_URL='https://kzbfndtzcrnmqvbhkxmf.supabase.co';
-const SUPABASE_PUBLISHABLE_KEY='sb_publishable_Iz1yza7ZokWP480Z9Q7XdA_JEIHGQ4v';
+const SUPABASE_URL='https://rzoyapskmediiucixekf.supabase.co';
+const SUPABASE_PUBLISHABLE_KEY='sb_publishable_FgN14pLyQz_J1qcO5LuIKA_ZDaKhx2N';
 const sb=window.supabase?.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);
 let cloudUser=null,cloudChannel=null,syncBusy=false,lastCloudPayload=null,syncTimer=null;
 function save(){localStorage.setItem(KEY,JSON.stringify(db));let s=document.getElementById('saveState');if(s)s.textContent=cloudUser?'Saved locally · cloud sync pending':'Saved on this device';if(cloudUser)scheduleCloudSync()}
