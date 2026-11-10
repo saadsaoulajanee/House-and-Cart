@@ -250,6 +250,26 @@ body{background:radial-gradient(circle at 96% -8%,#f0ddce 0,transparent 34%),rad
 .recipe-tags{display:flex;flex-wrap:wrap;gap:6px;margin:7px 0 12px}
 .recipe-tag{display:inline-flex;align-items:center;min-height:25px;padding:4px 9px;border-radius:100px;background:#edf3ec;color:#46634b;border:1px solid #dce9da;font-size:11px;font-weight:750}
 .version-chip{font-size:11px;padding:4px 9px;border-radius:20px;background:#f7ece4;color:#9a5c46;font-weight:800}
+
+/* Variations / shared ingredients editor */
+.variant-manager-list{display:grid;gap:8px;margin:14px 0 19px}
+.variant-manager-row{display:flex;gap:7px;align-items:center;flex-wrap:wrap;border:1px solid #e9e3dc;background:#fff;border-radius:13px;padding:12px}
+.variant-manager-copy{flex:1 1 150px;min-width:0;display:flex;flex-direction:column;gap:3px}
+.variant-manager-copy strong{font-size:14px}.variant-manager-copy small{font-size:11px;color:#89908b}
+.variant-manager-row .btn{min-height:36px}
+.variant-editor-section{border-top:1px solid #eae3dc;padding:17px 0;margin-top:16px}
+.variant-editor-section h3{font-size:16px;margin:0}
+.variant-shared-list{display:grid;gap:7px;margin-top:11px}
+.variant-shared-line{display:flex;justify-content:space-between;align-items:center;gap:10px;border:1px solid #ebe6e0;border-radius:11px;padding:10px;cursor:pointer}
+.variant-shared-line>span:first-child{display:flex;flex-direction:column;gap:2px;min-width:0}
+.variant-shared-line b{font-size:13px}.variant-shared-line small{color:#81877f;font-size:11px}
+.variant-remove-toggle{display:inline-flex;gap:6px;align-items:center;color:#975646;font-size:11px;font-weight:800;white-space:nowrap}
+.variant-remove-toggle input,.variant-override input{accent-color:#ae5d45;width:18px;height:18px}
+.variant-override{display:flex;align-items:center;gap:9px;cursor:pointer}
+.variant-editor-footer{display:flex;gap:9px;flex-wrap:wrap;margin-top:17px}
+.variant-editor-callout{margin:17px 0;background:#faf4ee;border:1px solid #eadccc;border-radius:13px;padding:13px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.variant-editor-callout strong{font-size:13px}.variant-editor-callout p{margin:3px 0 0;max-width:420px}
+@media(max-width:520px){.variant-manager-copy{flex:1 1 100%}.variant-shared-line{padding:10px 9px}.variant-manager-row .btn{flex:1 1 0}}
 </style>
 </head>
 <body><div class="app">
@@ -585,13 +605,92 @@ function updateSearchSummary(summaryId,emptyId,count,label){
  if(emptyId){let empty=document.getElementById(emptyId);if(empty)empty.classList.toggle('hidden',count!==0)}
 }
 function filterMealsSearch(q){let cards=[...document.querySelectorAll('#mealGrid .meal-card')],matches=0;cards.forEach(card=>{let visible=fieldWordMatch(card.dataset.search||'',q);card.classList.toggle('hidden',!visible);if(visible)matches++});updateSearchSummary('mealSearchSummary','mealSearchEmpty',matches,'recipes')}
-function openMeal(id=''){let m=id?mealById(id):{id:'',name:'',category:'Dinner',family:'',servings:2,time:30,notes:'',steps:[],photo:'',favorite:false,ingredients:[],variants:[],tags:[]};let lines=m.ingredients?.length?m.ingredients.map(x=>({...x})):[];showModal(id?'Edit meal':'Create a meal',`<form id="mealForm"><div class="two"><div class="field"><label>Meal name</label><input name="name" required value="${esc(m.name)}" placeholder="e.g. Lemon chicken bowl"></div><div class="field"><label>Category</label><select name="category" multiple data-multi="true">${getMealOccasions().map(x=>`<option ${((Array.isArray(m.category)?m.category:[m.category||'Dinner']).includes(x))?'selected':''}>${x}</option>`).join('')}</select></div><div class="field"><label>Recipe family</label><select name="family">${familyOptionsMarkup(m.family)}</select></div><div class="field"><label>Default servings</label><input name="servings" type="number" min="1" value="${m.servings||2}"></div><div class="field"><label>Prep / cook time (minutes)</label><input name="time" type="number" min="0" value="${m.time||0}"></div></div><div class="field"><label>Dietary & ingredient tags</label><p class="smalltext">Tags are selected manually; verify allergens and ingredients before relying on a free-from label.</p>${tagOptions("recipeTags",m.tags||[])}</div><div class="field"><label>Meal photo</label><input name="photo" type="file" accept="image/*"><div class="smalltext">${m.photo?'A photo is already saved. Choose another to replace it.':''}</div></div><div class="field"><label>Ingredients</label><div id="mealIngredients">${lines.map((x,i)=>ingredientEditorRow(x,i)).join('')}</div><button type="button" class="btn soft small" onclick="addMealIngredientRow()">＋ Add ingredient</button></div><div class="field"><label>Cooking steps</label><p class="smalltext">One step per line. Each line becomes its own guided instruction when you open the recipe.</p><textarea name="steps" rows="7" placeholder="1. Prepare the ingredients\n2. Heat the pan\n3. Cook until golden">${esc((m.steps||((m.notes||'').split(/\n+/).filter(Boolean))).join('\n'))}</textarea></div><div class="field"><label>Extra notes (optional)</label><textarea name="notes" placeholder="Serving ideas, substitutions…">${esc(m.notes||'')}</textarea></div><label class="row"><input type="checkbox" name="favorite" ${m.favorite?'checked':''}> Save as favorite</label><div class="row" style="margin-top:16px"><button class="btn green">Save meal</button>${id?`<button type="button" class="btn danger" onclick="deleteMeal('${id}')">Delete</button>`:''}</div></form>`);document.getElementById('mealForm').onsubmit=e=>saveMeal(e,id,m.photo);const host=document.getElementById('mealIngredients');host.addEventListener('input',refreshIngredientPreviews);host.addEventListener('change',refreshIngredientPreviews);refreshIngredientPreviews()}
+
+/* Create and edit variations without duplicating the common recipe instructions or ingredients. */
+function openVariantManager(mealId){
+ const m=mealById(mealId);if(!m)return;
+ const rows=(m.variants||[]).map(v=>{
+  const details=resolveRecipe(m,v.id);
+  return '<div class="variant-manager-row"><div class="variant-manager-copy"><strong>'+esc(v.name)+'</strong><small>'+details.ingredients.length+' ingredients · '+(v.steps?'custom instructions':'shared instructions')+'</small></div><button type="button" class="btn ghost small" data-id="'+esc(v.id)+'" data-action="preview">View</button><button type="button" class="btn soft small" data-id="'+esc(v.id)+'" data-action="edit">Edit</button><button type="button" class="btn danger small" data-id="'+esc(v.id)+'" data-action="delete">×</button></div>';
+ }).join('');
+ showModal('Recipe variations · '+m.name,'<p class="sub">Create a chicken, fish or vegetarian version of the same dish. Only differences are saved, while the original ingredients and steps remain shared.</p><div class="variant-manager-list"><div class="variant-manager-row"><div class="variant-manager-copy"><strong>Original recipe</strong><small>Shared base ingredients & instructions</small></div><button type="button" class="btn ghost small" data-action="preview" data-id="">View</button></div>'+rows+'</div><button type="button" class="btn green" id="newRecipeVariant">＋ Create a variation</button>');
+ const body=document.getElementById('modbody');
+ body.querySelector('#newRecipeVariant').onclick=()=>openVariantEditor(mealId);
+ body.querySelector('.variant-manager-list').onclick=e=>{
+  const button=e.target.closest('button[data-action]');if(!button)return;
+  const id=button.dataset.id,action=button.dataset.action;
+  if(action==='edit')openVariantEditor(mealId,id);
+  if(action==='preview')openRecipe(mealId,id);
+  if(action==='delete')deleteRecipeVariant(mealId,id);
+ };
+}
+function openVariantEditor(mealId,variantId=''){
+ const m=mealById(mealId);if(!m)return;
+ const existing=recipeVersion(m,variantId);
+ if(variantId&&!existing){openVariantManager(mealId);return}
+ const remove=new Set(existing?.removeIds||[]);
+ const inherited=(m.ingredients||[]).map(item=>{
+  const ing=ingById(item.ingredientId);
+  return '<label class="variant-shared-line"><span><b>'+esc(ing?.name||'Ingredient')+'</b><small>'+esc(formatQuantity(item.qty,item.unit))+'</small></span><span class="variant-remove-toggle"><input type="checkbox" class="variant-base-remove" value="'+esc(item.ingredientId)+'" '+(remove.has(item.ingredientId)?'checked':'')+'><span>Exclude</span></span></label>';
+ }).join('');
+ const steps=existing?.steps??m.steps??[];
+ const layout='<form id="variantForm"><div class="field"><label for="variantName">Variation name</label><input id="variantName" name="variantName" required maxlength="45" value="'+esc(existing?.name||'')+'" placeholder="e.g. Chicken · Fish · Vegetarian"></div><div class="field"><label>Tags for this version</label><p class="smalltext">Assign manually. Vegetarian, dairy-free and gluten-free are not verified automatically.</p>'+tagOptions('variantTags',existing?.tags||[])+'</div><section class="variant-editor-section"><div class="sectionhead"><h3>Shared ingredients</h3><span class="badge">'+(m.ingredients||[]).length+' from original</span></div><p class="smalltext">Check Exclude for ingredients you want to replace or remove. Unchecked ingredients are inherited automatically.</p><div class="variant-shared-list">'+(inherited||'<p class="smalltext">The original has no ingredients yet.</p>')+'</div></section><section class="variant-editor-section"><div class="sectionhead"><h3>Add or change ingredients</h3></div><p class="smalltext">Add fish, tofu or other substitutions here. If you add an ingredient already in the original, this version uses the quantity entered here.</p><div id="variantIngredients">'+(existing?.ingredientChanges||[]).map((line,i)=>ingredientEditorRow(line,i)).join('')+'</div><button type="button" class="btn soft small" onclick="addVariantIngredientRow()">＋ Add ingredient</button></section><section class="variant-editor-section"><label class="variant-override"><input type="checkbox" id="variantCustomSteps" '+(Array.isArray(existing?.steps)?'checked':'')+'> <strong>Use different cooking instructions</strong></label><p class="smalltext">Leave this unchecked to inherit any future edits to the original cooking steps.</p><div id="variantStepsWrap" class="field" style="'+(Array.isArray(existing?.steps)?'':'display:none')+'"><label>Instructions for this version (one step per line)</label><textarea id="variantSteps" name="variantSteps" rows="7">'+esc(steps.join('\n'))+'</textarea></div></section><div class="variant-editor-footer"><button type="submit" class="btn green">Save variation</button><button type="button" class="btn ghost" onclick="openVariantManager(\''+mealId+'\')">Cancel</button></div></form>';
+ showModal(existing?'Edit variation · '+existing.name:'New recipe variation',layout);
+ const form=document.getElementById('variantForm');
+ form.querySelector('#variantCustomSteps').onchange=e=>{form.querySelector('#variantStepsWrap').style.display=e.target.checked?'':'none'};
+ const host=form.querySelector('#variantIngredients');host.addEventListener('input',refreshIngredientPreviews);host.addEventListener('change',refreshIngredientPreviews);
+ refreshIngredientPreviews();
+ form.onsubmit=e=>saveRecipeVariant(e,mealId,variantId);
+}
+function addVariantIngredientRow(){
+ const host=document.getElementById('variantIngredients');if(!host)return;
+ host.insertAdjacentHTML('beforeend',ingredientEditorRow());
+ refreshIngredientPreviews();
+}
+function saveRecipeVariant(event,mealId,variantId=''){
+ event.preventDefault();
+ const m=mealById(mealId),form=event.target;
+ if(!m)return;
+ const name=form.elements.variantName.value.trim().replace(/\s+/g,' ');
+ if(!name||name.length>45){alert('Give this variation a name of up to 45 characters.');return}
+ if(name.toLowerCase()==='original'||(m.variants||[]).some(v=>v.id!==variantId&&norm(v.name)===norm(name))){alert('Use a unique variation name other than Original.');return}
+ const excluded=[...form.querySelectorAll('.variant-base-remove:checked')].map(x=>x.value);
+ const rows=[...form.querySelectorAll('#variantIngredients .ingredient-row')];
+ const changes=[];
+ for(const row of rows){
+  const ingredientId=row.querySelector('.ing-choice').value;
+  if(!ingredientId)continue;
+  const ing=ingById(ingredientId),spice=isSpice(ing),q=row.querySelector('.ing-qty').value,unit=spice?'':selectedUnit(row.querySelector('.ing-unit'));
+  if(!spice&&(!q||!unit||Number(q)<0)){alert('Enter a quantity and unit for each variation ingredient.');return}
+  const item={ingredientId,qty:spice?null:Number(q),unit};
+  const old=changes.findIndex(x=>x.ingredientId===ingredientId);
+  if(old>=0)changes[old]=item;else changes.push(item);
+ }
+ const customSteps=form.querySelector('#variantCustomSteps').checked;
+ const steps=customSteps?form.elements.variantSteps.value.split(/\n+/).map(x=>x.replace(/^\s*\d+[.)]\s*/,'').trim()).filter(Boolean):null;
+ const variant={id:variantId||uid(),name,removeIds:excluded,ingredientChanges:changes,steps,tags:tagsOfForm(form,'variantTags')};
+ m.variants??=[];
+ if(variantId){const index=m.variants.findIndex(v=>v.id===variantId);if(index<0)return;m.variants[index]=variant}
+ else m.variants.push(variant);
+ save();render();openRecipe(mealId,variant.id);
+}
+function deleteRecipeVariant(mealId,variantId){
+ const m=mealById(mealId),v=recipeVersion(m,variantId);if(!v)return;
+ let count=0;
+ for(const day of Object.values(db.plan||{}))for(const slot of Object.values(day||{}))if(slot?.mealId===mealId&&slot?.variantId===variantId)count++;
+ if(!confirm('Delete the variation "'+v.name+'"?'+(count?' '+count+' planned meal(s) using it will revert to the original version.':'')+' The original recipe stays intact.'))return;
+ m.variants=m.variants.filter(item=>item.id!==variantId);
+ for(const day of Object.values(db.plan||{}))for(const slot of Object.values(day||{}))if(slot?.mealId===mealId&&slot?.variantId===variantId)delete slot.variantId;
+ save();render();openVariantManager(mealId);
+}
+
+function openMeal(id=''){let m=id?mealById(id):{id:'',name:'',category:'Dinner',family:'',servings:2,time:30,notes:'',steps:[],photo:'',favorite:false,ingredients:[],variants:[],tags:[]};let lines=m.ingredients?.length?m.ingredients.map(x=>({...x})):[];showModal(id?'Edit meal':'Create a meal',`<form id="mealForm"><div class="two"><div class="field"><label>Meal name</label><input name="name" required value="${esc(m.name)}" placeholder="e.g. Lemon chicken bowl"></div><div class="field"><label>Category</label><select name="category" multiple data-multi="true">${getMealOccasions().map(x=>`<option ${((Array.isArray(m.category)?m.category:[m.category||'Dinner']).includes(x))?'selected':''}>${x}</option>`).join('')}</select></div><div class="field"><label>Recipe family</label><select name="family">${familyOptionsMarkup(m.family)}</select></div><div class="field"><label>Default servings</label><input name="servings" type="number" min="1" value="${m.servings||2}"></div><div class="field"><label>Prep / cook time (minutes)</label><input name="time" type="number" min="0" value="${m.time||0}"></div></div><div class="field"><label>Dietary & ingredient tags</label><p class="smalltext">Tags are selected manually; verify allergens and ingredients before relying on a free-from label.</p>${tagOptions("recipeTags",m.tags||[])}</div><div class="field"><label>Meal photo</label><input name="photo" type="file" accept="image/*"><div class="smalltext">${m.photo?'A photo is already saved. Choose another to replace it.':''}</div></div><div class="field"><label>Ingredients</label><div id="mealIngredients">${lines.map((x,i)=>ingredientEditorRow(x,i)).join('')}</div><button type="button" class="btn soft small" onclick="addMealIngredientRow()">＋ Add ingredient</button></div><div class="field"><label>Cooking steps</label><p class="smalltext">One step per line. Each line becomes its own guided instruction when you open the recipe.</p><textarea name="steps" rows="7" placeholder="1. Prepare the ingredients\n2. Heat the pan\n3. Cook until golden">${esc((m.steps||((m.notes||'').split(/\n+/).filter(Boolean))).join('\n'))}</textarea></div><div class="field"><label>Extra notes (optional)</label><textarea name="notes" placeholder="Serving ideas, substitutions…">${esc(m.notes||'')}</textarea></div><label class="row"><input type="checkbox" name="favorite" ${m.favorite?'checked':''}> Save as favorite</label>${id?`<div class="variant-editor-callout"><div><strong>Recipe variations</strong><p class="smalltext">Chicken, fish, vegetarian and other versions can share these base ingredients and instructions. Save edits before managing variations.</p></div><button type="button" class="btn soft small" onclick="openVariantManager(\'${id}\')">Manage variations (${(m.variants||[]).length})</button></div>`:'' }<div class="row" style="margin-top:16px"><button class="btn green">Save meal</button>${id?`<button type="button" class="btn danger" onclick="deleteMeal('${id}')">Delete</button>`:''}</div></form>`);document.getElementById('mealForm').onsubmit=e=>saveMeal(e,id,m.photo);const host=document.getElementById('mealIngredients');host.addEventListener('input',refreshIngredientPreviews);host.addEventListener('change',refreshIngredientPreviews);refreshIngredientPreviews()}
 function openRecipe(id){let m=mealById(id);if(!m)return;let steps=m.steps?.length?m.steps:(m.notes||'').split(/\n+/).filter(Boolean);showModal('Recipe · '+m.name,`<div class="recipe-detail">${m.photo?`<img class="meal-photo" style="height:230px" src="${m.photo}" alt="${esc(m.name)}">`:''}<div class="row" style="justify-content:space-between;margin:13px 0"><span class="badge">${esc((Array.isArray(m.category)?m.category:[m.category||'Dinner']).join(' · '))}</span><span class="smalltext">⏱ ${m.time||'—'} min · 🍽 ${m.servings||1} servings</span></div><div class="recipe-title-and-favorite"><h1>${esc(m.name)}</h1><button type="button" class="btn soft recipe-favorite-button ${m.favorite?'is-favorite':''}" aria-label="${m.favorite?'Remove from':'Add to'} favorites: ${esc(m.name)}" title="${m.favorite?'Remove from favorites':'Add to favorites'}" aria-pressed="${!!m.favorite}" onclick="toggleRecipeFavorite('${m.id}',this)">${m.favorite?'♥':'♡'}</button></div><div class="two"><section><h3>What you'll need</h3>${(m.ingredients||[]).map(x=>`<div class="listline"><span class="grow">${esc(ingById(x.ingredientId)?.name||'Ingredient')}</span><b>${isSpice(ingById(x.ingredientId))?'To taste':`${esc(formatQuantity(x.qty,x.unit))}`}</b></div>`).join('')||'<p class="smalltext">No ingredients added yet.</p>'}</section><section><h3>Cook along</h3><p class="smalltext">Tick each step as you go.</p><div id="recipeSteps">${steps.map((st,i)=>`<label class="recipe-step"><input type="checkbox" class="check"><span><b>Step ${i+1}</b><br>${esc(st)}</span></label>`).join('')||'<p class="smalltext">No steps added yet. Edit this recipe to add them.</p>'}</div></section></div>${m.notes?`<div class="card" style="margin-top:15px;background:#fbf2eb"><b>Kitchen notes</b><p>${esc(m.notes)}</p></div>`:''}<div class="row" style="margin-top:16px"><button class="btn green" onclick="closeModal();openMeal('${m.id}')">Edit recipe</button><button class="btn soft" onclick="quickPlan('${m.id}')">＋ Add to planner</button></div></div>`)}
 function pickerMarkup(name,placeholder,items,selectedId='',cls=''){let selected=items.find(x=>x.id===selectedId);let listId='pick_'+uid().replace(/[^a-z0-9]/gi,'');return `<div class="search-picker ${cls}"><input type="search" list="${listId}" autocomplete="off" aria-label="${esc(placeholder)}" placeholder="${esc(placeholder)}" value="${esc(selected?.name||'')}" oninput="syncSearchPicker(this)" onchange="syncSearchPicker(this)" data-target="${listId}_value"><datalist id="${listId}">${items.map(x=>`<option value="${esc(x.name)}"></option>`).join('')}</datalist><select id="${listId}_value" name="${name}" class="${cls==='ingredient-picker'?'ing-choice':''}" ${cls==='ingredient-picker'?'onchange="toggleSpiceFields(this)"':''} required hidden><option value="">Choose…</option>${items.map(x=>`<option value="${x.id}" ${x.id===selectedId?'selected':''}>${esc(x.name)}</option>`).join('')}</select></div>`}
 function syncSearchPicker(input){let target=document.getElementById(input.dataset.target);if(!target)return;let datalist=input.list;if(datalist){datalist.replaceChildren();[...target.options].filter(o=>o.value&&fieldWordMatch(o.textContent,input.value)).slice(0,70).forEach(o=>{let option=document.createElement('option');option.value=o.textContent;datalist.append(option)})}let match=[...target.options].find(o=>o.value&&norm(o.textContent)===norm(input.value));let next=match?match.value:'';if(target.value!==next){target.value=next;target.dispatchEvent(new Event('change',{bubbles:true}))}input.setCustomValidity(input.value&&!match?'Choose an item from the suggestions, or clear the search.':'')}
 
 function refreshIngredientPreviews(){
- document.querySelectorAll('#mealIngredients .ingredient-row').forEach(row=>{
+ document.querySelectorAll('#mealIngredients .ingredient-row,#variantIngredients .ingredient-row').forEach(row=>{
   const el=row.querySelector('.quantity-preview');if(!el)return;
   const ing=ingById(row.querySelector('.ing-choice')?.value),raw=row.querySelector('.ing-qty')?.value;
   if(isSpice(ing)){el.textContent='Add to taste';return}
