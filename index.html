@@ -517,7 +517,7 @@ function plannerSlotsForDay(day){
 function planView(){let days=weekDays(),planned=allPlanned().length;return `<div class="hero"><div><div class="eyebrow">Seven-day rhythm</div><h1>Meal planner</h1><p class="sub">Plan breakfast, apéro, goûter and more. Servings scale the shopping list automatically.</p></div><button class="btn green" onclick="addShoppingFromPlan()">Build shopping list ↗</button></div><div class="grid">${days.map(d=>{let k=dateKey(d),slots=db.plan[k]||{};return `<section class="day span?"><div class="dayhead"><b>${fmtDate(k)}</b><span class="badge">${Object.values(slots).filter(Boolean).length} planned</span></div>${plannerSlotsForDay(k).map(s=>{let p=slots[s],m=p&&mealById(p.mealId);return `<div class="slot" data-extra="${!CORE_MEAL_SLOTS.includes(s)}" ondragover="event.preventDefault()" data-day="${k}" data-occasion="${esc(s)}" ondrop="dropRecipe(event,this.dataset.day,this.dataset.occasion)">${m?`<div class="plan-slot-main"><div class="plan-slot-info"><span class="slot-kind">${esc(s)}</span><b draggable="true" ondragstart="dragRecipe(event,'${m.id}')">${esc(m.name)}</b><span class="smalltext">${p.servings} servings</span></div><div class="plan-slot-actions"><button class="btn ghost small" onclick="editPlanSlot(this.closest('.slot').dataset.day,this.closest('.slot').dataset.occasion)">Edit</button><button class="btn danger small" aria-label="Remove recipe from ${esc(s)}" onclick="clearPlanSlot(this.closest('.slot').dataset.day,this.closest('.slot').dataset.occasion)">×</button></div></div>`:`<div class="plan-slot-main"><span class="muted">${esc(s)}</span><button class="btn soft small plan-add" onclick="editPlanSlot(this.closest('.slot').dataset.day,this.closest('.slot').dataset.occasion)">＋ Add</button></div>`}${!CORE_MEAL_SLOTS.includes(s)?`<button type="button" class="occasion-remove" aria-label="Remove ${esc(s)} occasion" onclick="removeDayOccasion(this.closest('.slot').dataset.day,this.closest('.slot').dataset.occasion)">Remove occasion</button>`:''}</div>`}).join('')}<button type="button" class="planner-extra-toggle" onclick="openOccasionPicker('${k}')">＋ Add an occasion</button></section>`}).join('')}</div><div class="card" style="margin-top:14px"><div class="sectionhead"><h2>Planned ingredients</h2><span class="badge">${planned} meal slots</span></div>${Object.values(aggregatePlan()).map(x=>`<div class="listline"><div class="grow"><b>${esc(ingById(x.ingredientId)?.name||'Ingredient')}</b><small>${esc(x.category)}</small></div><b>${esc(formatQuantity(x.qty,x.unit))}</b></div>`).join('')||'<p class="smalltext">Add meals to your week to see the ingredient roll-up.</p>'}</div>`}
 function editPlanSlot(k,s){let p=db.plan[k]?.[s];showModal(`${s} · ${fmtDate(k)}`,`<form id="planForm"><div class="field"><label>Find a recipe</label>${pickerMarkup('meal','Search your recipe collection…',db.meals,p?.mealId||'')}</div><div class="field"><label>Servings</label><input name="servings" type="number" min="1" value="${p?.servings||2}"></div><button class="btn green">Save to planner</button></form>`);document.getElementById('planForm').onsubmit=e=>{e.preventDefault();let meal=mealById(e.target.meal.value);if(!meal)return;db.plan[k]??={};db.plan[k][s]={mealId:meal.id,servings:Math.max(1,+e.target.servings.value||1)};save();closeModal();render()}}
 function clearPlanSlot(k,s){if(db.plan[k])delete db.plan[k][s];save();render()}
-function quickPlan(id){let d=dateKey(new Date()),m=mealById(id);db.plan[d]??={};let preferred=(Array.isArray(m?.category)?m.category:[m?.category||'Dinner']).find(c=>getMealOccasions().includes(c))||'Dinner';db.plan[d][preferred]={mealId:id,servings:m?.servings||2};save();closeModal();render();if(view!=='plan'){view='plan';render()}}
+function quickPlan(id){let d=dateKey(new Date()),m=mealById(id);db.plan[d]??={};let preferred=(Array.isArray(m?.category)?m.category:[m?.category||'Dinner']).find(c=>getMealOccasions().includes(c))||'Dinner';db.plan[d][preferred]={mealId:id,servings:m?.servings||2};save();closeModal();if(view!=='plan')go('plan');else render()}
 function shopView(){let groups=CATS.map(c=>({c,items:db.shopping.filter(x=>(x.category||'Other')===c&&(shopFilter==='All'||(shopFilter==='To buy'&&!x.checked)||(shopFilter==='Picked'&&x.checked)))})).filter(g=>g.items.length);return `<div class="hero"><div><div class="eyebrow">Shopping, minus the guesswork</div><h1>Shopping list</h1><p class="sub">${db.shopping.filter(x=>!x.checked).length} items left · ${db.shopping.filter(x=>x.checked).length} picked up</p></div><div class="row"><button class="btn soft" onclick="addManualItem()">＋ Add item</button><button class="btn green" onclick="finishShopping()">Finish shop</button></div></div><div class="tabs">${['All','To buy','Picked'].map(x=>`<button class="${shopFilter===x?'active':''}" onclick="shopFilter='${x}';render()">${x}</button>`).join('')}</div><div class="grid"><div class="card span8 shop-items-card">${groups.map(g=>`<div class="category">${g.c}</div>${g.items.map(x=>`<div class="listline shop-item-row"><input class="check" type="checkbox" ${x.checked?'checked':''} onchange="toggleShop('${x.id}',this.checked)"><div class="grow ${x.checked?'strike':''}"><b>${esc(x.name)}</b><small>${x.source==='spice-auto'?'Restock spice':(x.qty?`${esc(formatQuantity(x.qty,x.unit))}`:'Manual item')} ${x.source==='plan'?`· From meal plan${x.pantryDeducted>0?` · ${Number(x.pantryDeducted.toFixed(2))} ${esc(x.unit)} already in pantry`:''}`:''}</small></div><div class="shop-item-controls"><input aria-label="Price" type="number" min="0" step=".01" placeholder="€" value="${x.price||''}" onchange="setShopPrice('${x.id}',this.value)"><button class="btn danger small" onclick="removeShop('${x.id}')">×</button></div></div>`).join('')}`).join('')||'<div class="empty">Your shopping list is empty. Add an item or build it from your meal plan.</div>'}</div><div class="card span4 shop-basket-card"><h2>Basket estimate</h2><div style="font-size:30px;font-weight:850">${money(db.shopping.reduce((a,x)=>a+(+x.price||0),0))}</div><p class="smalltext">Based on prices entered for each item.</p><div class="field"><label>Budget target</label><input type="number" min="0" value="${db.settings.budget}" onchange="db.settings.budget=+this.value||0;save();render()"></div><div class="progress"><i style="width:${Math.min(100,db.settings.budget?db.shopping.reduce((a,x)=>a+(+x.price||0),0)/db.settings.budget*100:0)}%"></i></div><p class="smalltext">${money(db.settings.budget?db.settings.budget-db.shopping.reduce((a,x)=>a+(+x.price||0),0):0)} ${db.settings.budget?'remaining against budget':'Set a budget to track spending'}</p><div class="field"><label>Usual store</label><input value="${esc(db.settings.store)}" placeholder="e.g. Carrefour" onchange="db.settings.store=this.value;save()"></div></div></div>`}
 function toggleShop(id,v){let x=db.shopping.find(a=>a.id===id);if(x)x.checked=v;if(x?.source==='spice-auto'&&v){alert('Great! Once you put this spice in your pantry, change its status to “Good” and Maison will remove it from the restock list.')}save();render()}
 function setShopPrice(id,v){let x=db.shopping.find(a=>a.id===id);if(x)x.price=+v||0;save()}
@@ -838,12 +838,60 @@ function restoreSafetySnapshotNow(){
  }catch(e){alert('Could not restore: '+e.message)}
 }
 
+
+function resetTabScroll(){
+ const restore=document.documentElement.style.scrollBehavior;
+ document.documentElement.style.scrollBehavior='auto';
+ window.scrollTo(0,0);
+ if(document.scrollingElement)document.scrollingElement.scrollTop=0;
+ requestAnimationFrame(()=>{
+  window.scrollTo(0,0);
+  if(document.scrollingElement)document.scrollingElement.scrollTop=0;
+  document.documentElement.style.scrollBehavior=restore;
+ });
+}
+try{history.scrollRestoration='manual'}catch(e){}
+let tabSwipeStart=null,tabSwipeConsumeUntil=0;
+function swipeTabOrder(){return (appMode==='care'?MOBILE_NAV_CARE:MOBILE_NAV_KITCHEN).map(entry=>entry[0])}
+function canStartTabSwipe(target){
+ if(!target?.closest||target.closest('input,textarea,select,button,a,[role="button"],[contenteditable="true"],.tabs,.search-picker,.styled-select,.planner-extra-toggle'))return false;
+ const main=document.getElementById('main');
+ for(let el=target;el&&el!==main;el=el.parentElement){
+  const style=getComputedStyle(el);
+  if(el.scrollWidth>el.clientWidth+12&&/(auto|scroll)/.test(style.overflowX))return false;
+ }
+ return true;
+}
+const swipeZone=document.getElementById('main');
+swipeZone.addEventListener('touchstart',e=>{
+ tabSwipeStart=null;
+ if(window.innerWidth>650||e.touches.length!==1||document.getElementById('modalback').classList.contains('show')||document.getElementById('cookOverlay')?.classList.contains('show'))return;
+ if(!canStartTabSwipe(e.target))return;
+ const t=e.touches[0];tabSwipeStart={x:t.clientX,y:t.clientY,at:Date.now()};
+},{passive:true});
+swipeZone.addEventListener('touchend',e=>{
+ const start=tabSwipeStart;tabSwipeStart=null;
+ if(!start||!e.changedTouches.length)return;
+ const t=e.changedTouches[0],dx=t.clientX-start.x,dy=t.clientY-start.y;
+ if(Date.now()-start.at>800||Math.abs(dx)<85||Math.abs(dx)<Math.abs(dy)*1.65)return;
+ const order=swipeTabOrder(),idx=order.indexOf(view);
+ if(idx<0)return;
+ const next=idx+(dx<0?1:-1);
+ if(next<0||next>=order.length)return;
+ tabSwipeConsumeUntil=Date.now()+500;
+ go(order[next]);
+},{passive:true});
+swipeZone.addEventListener('touchcancel',()=>{tabSwipeStart=null},{passive:true});
+swipeZone.addEventListener('click',e=>{
+ if(Date.now()<tabSwipeConsumeUntil){e.preventDefault();e.stopImmediatePropagation()}
+},true);
+
 const _houseCartRenderBase=render;
 render=function(){_houseCartRenderBase();renderMobileNav();updateBackupNotice()};
 const _houseCartSetModeBase=setMode;
-setMode=function(mode){_houseCartSetModeBase(mode);renderMobileNav()};
+setMode=function(mode){const before=appMode;_houseCartSetModeBase(mode);renderMobileNav();if(before!==appMode)resetTabScroll()};
 const _houseCartGoBase=go;
-go=function(v){_houseCartGoBase(v);renderMobileNav()};
+go=function(v){const before=view;_houseCartGoBase(v);renderMobileNav();if(before!==view)resetTabScroll()};
 let previousModalFocus=null;
 const _houseCartShowModalBase=showModal;
 showModal=function(title,body){
