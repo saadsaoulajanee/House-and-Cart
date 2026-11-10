@@ -215,6 +215,7 @@ async function syncNow(mode='both'){
  if(!sb||!cloudUser||syncBusy)return false;
  if(!navigator.onLine){const el=document.getElementById('saveState');if(el)el.textContent='Cloud sync pending · offline';refreshCloudStatus();return false}
  syncBusy=true;
+ let syncCompleted=false;
  const status=document.getElementById('saveState');if(status)status.textContent='Syncing…';
  try{
   const {data:remote,error}=await sb.from('mealcart_sync_state').select('payload,updated_at').eq('owner_id',cloudUser.id).maybeSingle();
@@ -254,6 +255,7 @@ async function syncNow(mode='both'){
   }else{
    markCloudSynced(local,remote?.updated_at);
   }
+  syncCompleted=true;
   return true;
  }catch(e){
   if(status)status.textContent='Cloud sync failed';
@@ -262,7 +264,7 @@ async function syncNow(mode='both'){
   return false;
  }finally{
   syncBusy=false;
-  if(lastCloudPayload&&stableJson(cloudPayload())!==lastCloudPayload&&navigator.onLine){if(status)status.textContent='Cloud sync pending';scheduleCloudSync()}
+  if(syncCompleted&&lastCloudPayload&&stableJson(cloudPayload())!==lastCloudPayload&&navigator.onLine){if(status)status.textContent='Cloud sync pending';scheduleCloudSync()}
   refreshCloudStatus();
  }
 }
