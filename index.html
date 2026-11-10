@@ -610,6 +610,48 @@ function openMoreMenu(){
  const entries=appMode==='care'?[['home','Overview'],['meals','Essentials'],['kitchen','Supply cupboard'],['shop','Restock cart']]:[['home','Overview'],['meals','Recipes'],['plan','Meal planner'],['kitchen','Pantry & ingredients'],['shop','Shopping list'],['cookable','What can I cook?'],['budget','Budget'],['history','Shopping history']];
  showModal('Explore House & Cart','<p class="smalltext">Everything for your home, in one place.</p><div class="quick-menu-grid">'+entries.map(([v,label])=>'<button type="button" class="quick-menu-item" onclick="closeModal();go(\''+v+'\');window.scrollTo(0,0)">'+label+' <span aria-hidden="true">›</span></button>').join('')+'</div><div class="quick-menu-tools"><button type="button" class="btn soft" onclick="closeModal();openCloudAccount()">☁ Account & sync</button><button type="button" class="btn ghost" onclick="exportData()">↓ Download backup</button><button type="button" class="btn ghost" onclick="closeModal();document.getElementById(\'importFile\').click()">↑ Import backup</button><button type="button" class="btn ghost" onclick="closeModal();restoreSafetySnapshot()">↶ Recovery snapshot</button></div>');
 }
+
+const BACKUP_DEFER_KEY='housecart_backup_defer_until';
+function updateBackupNotice(){
+ const main=document.getElementById('main');if(!main)return;
+ main.querySelector('.backup-notice')?.remove();
+ if(view!=='home'||!meaningfulHomeData(cloudPayload()))return;
+ const last=localStorage.getItem(BACKUP_AT_KEY),later=localStorage.getItem(BACKUP_DEFER_KEY);
+ const now=Date.now();
+ if(later&&now<Date.parse(later))return;
+ if(last&&now-Date.parse(last)<14*86400000)return;
+ const banner=document.createElement('section');banner.className='backup-notice';banner.setAttribute('aria-label','Data backup reminder');
+ banner.innerHTML='<span style="font-size:24px" aria-hidden="true">🛡️</span><div class="backup-notice-content"><b>Keep your home data safe</b><p>'+(last?'It has been a while since your last backup.':'Download your first backup so you can recover your recipes and lists.')+'</p></div><button type="button" class="btn green small" onclick="exportData()">Download backup</button><button type="button" class="btn ghost small" onclick="remindBackupLater()">Later</button>';
+ main.insertAdjacentElement('afterbegin',banner);
+}
+function remindBackupLater(){localStorage.setItem(BACKUP_DEFER_KEY,new Date(Date.now()+3*86400000).toISOString());updateBackupNotice()}
+function restoreSafetySnapshot(){
+ let item;
+ try{item=JSON.parse(localStorage.getItem(RECOVERY_KEY)||'null')}catch(e){item=null}
+ if(!item?.payload||!Array.isArray(item.payload.meals)||!Array.isArray(item.payload.ingredients)){
+  showModal('Recovery','<p class="sub">No automatic recovery snapshot is available yet. Use Import backup to restore a previously downloaded JSON backup.</p><button class="btn soft" onclick="closeModal();document.getElementById(\'importFile\').click()">Import a backup</button>');return;
+ }
+ const stamp=new Date(item.created_at).toLocaleString(undefined,{dateStyle:'medium',timeStyle:'short'});
+ showModal('Recovery snapshot','<p class="sub">A safety copy was saved on this device before a cloud or import operation.</p><div class="card" style="margin:14px 0"><b>Snapshot taken:</b> '+esc(stamp)+'<p class="smalltext">'+esc(item.reason||'Before changes')+'</p><p class="smalltext">'+item.payload.meals.length+' recipes · '+(item.payload.inventory||[]).length+' pantry entries</p></div><p class="smalltext">Restoring replaces the current local data. Download your current backup first if you want to keep both versions.</p><div class="row"><button class="btn soft" onclick="exportData()">Download current backup</button><button class="btn ghost" onclick="downloadRecoverySnapshot()">Download snapshot</button><button class="btn green" onclick="restoreSafetySnapshotNow()">Restore snapshot</button></div>');
+}
+function downloadRecoverySnapshot(){
+ try{
+  const item=JSON.parse(localStorage.getItem(RECOVERY_KEY)||'null');if(!item?.payload)return;
+  const blob=new Blob([JSON.stringify(item.payload,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),link=document.createElement('a');
+  link.href=url;link.download='house-and-cart-recovery-'+(item.created_at||'snapshot').slice(0,10)+'.json';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+ }catch(e){alert('Snapshot unavailable: '+e.message)}
+}
+function restoreSafetySnapshotNow(){
+ try{
+  const item=JSON.parse(localStorage.getItem(RECOVERY_KEY)||'null');
+  if(!item?.payload||!Array.isArray(item.payload.meals)||!Array.isArray(item.payload.ingredients))throw Error('Invalid recovery snapshot');
+  if(!confirm('Restore this snapshot? Your current local version will be replaced.'))return;
+  const restored={...fresh(),...item.payload};
+  localStorage.setItem(KEY,JSON.stringify(restored));db=restored;
+  save();closeModal();render();alert('Recovery snapshot restored. The app will sync your restored data if you are signed in.');
+ }catch(e){alert('Could not restore: '+e.message)}
+}
+
 const _houseCartRenderBase=render;
 render=function(){_houseCartRenderBase();renderMobileNav();updateBackupNotice()};
 const _houseCartSetModeBase=setMode;
@@ -626,7 +668,7 @@ showModal=function(title,body){
  if(close)close.focus({preventScroll:true});
 };
 const _houseCartCloseModalBase=closeModal;
-closeModal=function(){_houseCartCloseModalBase();if(previousModalFocus?.isConnected)previousModalFocus.focus({preventScroll:true})};
+closeModal=function(){if(window._houseCartConflictChoice){const cancel=window._houseCartConflictChoice;window._houseCartConflictChoice=null;cancel('cancel',true)}_houseCartCloseModalBase();if(previousModalFocus?.isConnected)previousModalFocus.focus({preventScroll:true})};
 document.addEventListener('keydown',e=>{
  if(e.key==='Escape'&&document.getElementById('modalback').classList.contains('show')){closeModal();return}
  if(e.key==='Tab'&&document.getElementById('modalback').classList.contains('show')){
@@ -639,7 +681,7 @@ document.addEventListener('keydown',e=>{
  }
 });
 const style=document.createElement('style');style.textContent='.quick-menu-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin:14px 0}.quick-menu-item{border:1px solid #eae2d9;background:#fff;padding:15px 12px;text-align:left;display:flex;justify-content:space-between;border-radius:12px;color:#333a36;font:700 13px ui-sans-serif,system-ui;min-height:53px}.quick-menu-item span{color:#b45e42}.quick-menu-tools{display:flex;gap:9px;flex-wrap:wrap;padding-top:14px;border-top:1px solid #eee8e0}.quick-menu-tools .btn{min-height:44px}.quick-menu-tools .btn:first-child{background:#ad5d48;color:white}';document.head.append(style);
-renderMobileNav();
+renderMobileNav();updateBackupNotice();
 
 </script>
 </body></html>
