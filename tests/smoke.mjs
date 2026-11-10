@@ -70,8 +70,83 @@ try {
  assert.equal(await page.locator('#mobileNav').isVisible(),false);
  await page.screenshot({path:'housecart-desktop.png',fullPage:true});
 
+ await testMockCloudSync(browser,origin);
  assert.deepEqual(errors,[],'Browser JavaScript exceptions');
  console.log('PASS: mobile navigation, planner, recipe editing, unit formatting, searches, backups, desktop layout');
 }finally{
  await browser.close();
+}
+
+async function testMockCloudSync(browser,origin){
+ const page=await browser.newPage({viewport:{width:390,height:844}});
+ const faults=[];
+ page.on('pageerror',e=>faults.push(String(e)));
+ await page.route('https://cdn.jsdelivr.net/npm/@supabase/**',route=>route.abort());
+ await page.addInitScript(()=>{
+  const state={row:null};
+  window.__fakeCloudState=state;
+  const copy=x=>JSON.parse(JSON.stringify(x));
+  const user={id:'00000000-0000-4000-8000-000000000001',email:'qa@example.com'};
+  window.supabase={createClient(){
+   return {
+    auth:{
+     getSession:async()=>({data:{session:{user}},error:null}),
+     onAuthStateChange:()=>({data:{subscription:{unsubscribe(){}}}})
+    },
+    from(){
+     let operation=null,write=null,filters={};
+     const builder={
+      select(){return builder},
+      eq(k,v){filters[k]=v;return builder},
+      is(k,v){filters[k]=v;return builder},
+      update(value){operation='update';write=value;return builder},
+      insert(value){operation='insert';write=value;return builder},
+      async maybeSingle(){return {data:state.row?copy(state.row):null,error:null}},
+      then(resolve,reject){
+       let result;
+       if(operation==='insert'){
+        if(state.row)result={data:null,error:{message:'Row already exists'}};
+        else{state.row=copy(write);result={data:[{updated_at:state.row.updated_at}],error:null}}
+       }else if(operation==='update'){
+        if(!state.row||state.row.updated_at!==filters.updated_at)result={data:[],error:null};
+        else{state.row=copy({...state.row,...write});result={data:[{updated_at:state.row.updated_at}],error:null}}
+       }else result={data:[],error:null};
+       return Promise.resolve(result).then(resolve,reject);
+      }
+     };
+     return builder;
+    },
+    channel(){return {on(){return this},subscribe(){return this}}},
+    removeChannel:async()=>{}
+   };
+  }};
+ });
+ try{
+  await page.goto(origin,{waitUntil:'domcontentloaded'});
+  await page.waitForFunction(()=>document.getElementById('cloudStatusLabel')?.textContent.includes('Cloud synced'),{timeout:15000});
+  await page.evaluate(()=>{
+   db.meals.push({id:'local1',name:'First synced recipe',category:['Dinner'],servings:2,ingredients:[],steps:[]});
+   save();
+  });
+  await page.waitForFunction(()=>window.__fakeCloudState.row?.payload.meals?.some(x=>x.id==='local1'),{timeout:15000});
+  await page.evaluate(()=>{
+   window.__fakeCloudState.row.payload.meals.push({id:'remote1',name:'Remote edit',category:['Dinner'],servings:2,ingredients:[],steps:[]});
+   window.__fakeCloudState.row.updated_at=new Date(Date.now()+5000).toISOString();
+   db.meals.push({id:'local2',name:'Unsynced local edit',category:['Dinner'],servings:2,ingredients:[],steps:[]});
+   save();
+  });
+  const dialog=page.getByRole('dialog',{name:/Choose which data to keep/});
+  await dialog.waitFor({timeout:15000});
+  assert.equal(await page.evaluate(()=>window.__fakeCloudState.row.payload.meals.some(x=>x.id==='local2')),false,'Conflict must not overwrite cloud automatically');
+  await dialog.getByRole('button',{name:/Not now/}).click();
+  await page.waitForTimeout(1400);
+  assert.equal(await dialog.isVisible(),false,'Choosing Not now must not reopen the conflict');
+  await page.evaluate(()=>{syncNow('both')});
+  await dialog.waitFor({timeout:15000});
+  await dialog.getByRole('button',{name:/Use cloud data/}).click();
+  await page.waitForFunction(()=>db.meals.some(m=>m.id==='remote1')&&!db.meals.some(m=>m.id==='local2'),{timeout:15000});
+  assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem(RECOVERY_KEY)).payload.meals.some(x=>x.id==='local2')),true,'Recovery snapshot must preserve the local version');
+  assert.deepEqual(faults,[],'No JavaScript exceptions in cloud sync');
+  console.log('PASS: mocked cloud sync with optimistic updates, conflict cancel and recovery snapshot');
+ }finally{await page.close()}
 }
