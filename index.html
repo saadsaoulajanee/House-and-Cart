@@ -225,6 +225,10 @@ body{background:radial-gradient(circle at 96% -8%,#f0ddce 0,transparent 34%),rad
 .recipe-title-and-favorite h1{font-size:clamp(27px,6vw,36px)!important;line-height:1.18;margin:0!important;flex:1;min-width:0;overflow-wrap:anywhere}
 .recipe-title-and-favorite .recipe-favorite-button{flex:0 0 48px;width:48px;height:48px;display:grid;place-items:center;padding:0;border-radius:15px;font-size:26px;box-shadow:none;min-height:48px}
 @media(max-width:560px){.recipe-title-and-favorite{gap:12px;margin-bottom:19px}.meal-card-title-row h3{font-size:14px}.meal-card-favorite{flex-basis:36px;width:36px;height:36px}}
+
+/* Touch navigation motion uses transform and opacity only (GPU friendly). */
+#main{min-width:0;backface-visibility:hidden;transform-origin:center center}
+@media(prefers-reduced-motion:reduce){#main{transition:none!important;animation:none!important}}
 </style>
 </head>
 <body><div class="app">
@@ -967,19 +971,57 @@ swipeZone.addEventListener('touchstart',e=>{
  if(!canStartTabSwipe(e.target))return;
  const t=e.touches[0];tabSwipeStart={x:t.clientX,y:t.clientY,at:Date.now()};
 },{passive:true});
+let tabSwipeBusy=false,swipeDrag=0;
+const reduceSwipeMotion=()=>window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+function clearSwipeDrag(){
+ swipeDrag=0;swipeZone.style.transform='';swipeZone.style.opacity='';swipeZone.style.willChange='';
+}
+function animateTabSwipe(next,dx){
+ if(tabSwipeBusy)return;
+ if(reduceSwipeMotion()||typeof swipeZone.animate!=='function'){clearSwipeDrag();go(next);return}
+ tabSwipeBusy=true;
+ const direction=dx<0?-1:1;
+ const from=swipeDrag;
+ // Move the current page away in the direction of the gesture; bring the new one from the opposite edge.
+ swipeZone.style.transform='';swipeZone.style.opacity='';
+ const outgoing=swipeZone.animate([
+  {transform:'translate3d('+from+'px,0,0)',opacity:1},
+  {transform:'translate3d('+(direction*Math.min(125,window.innerWidth*.32))+'px,0,0)',opacity:.36}
+ ],{duration:150,easing:'cubic-bezier(.32,0,.67,0)'});
+ outgoing.finished.catch(()=>{}).then(()=>{
+  clearSwipeDrag();go(next);
+  const incoming=swipeZone.animate([
+   {transform:'translate3d('+(-direction*Math.min(76,window.innerWidth*.2))+'px,0,0)',opacity:.52},
+   {transform:'translate3d(0,0,0)',opacity:1}
+  ],{duration:230,easing:'cubic-bezier(.18,.78,.2,1)'});
+  return incoming.finished.catch(()=>{});
+ }).finally(()=>{tabSwipeBusy=false;clearSwipeDrag()});
+}
+swipeZone.addEventListener('touchmove',e=>{
+ if(!tabSwipeStart||!e.touches.length||tabSwipeBusy)return;
+ const touch=e.touches[0],dx=touch.clientX-tabSwipeStart.x,dy=touch.clientY-tabSwipeStart.y;
+ const order=swipeTabOrder(),idx=order.indexOf(view);
+ if(Math.abs(dx)<12||Math.abs(dx)<Math.abs(dy)*1.3||idx<0){clearSwipeDrag();return}
+ const eligible=(dx<0&&idx<order.length-1)||(dx>0&&idx>0);
+ if(!eligible||reduceSwipeMotion())return;
+ swipeDrag=Math.max(-64,Math.min(64,dx*.22));
+ swipeZone.style.willChange='transform,opacity';
+ swipeZone.style.transform='translate3d('+swipeDrag+'px,0,0)';
+ swipeZone.style.opacity=String(1-Math.min(.09,Math.abs(swipeDrag)/700));
+},{passive:true});
 swipeZone.addEventListener('touchend',e=>{
  const start=tabSwipeStart;tabSwipeStart=null;
- if(!start||!e.changedTouches.length)return;
+ if(!start||!e.changedTouches.length||tabSwipeBusy){clearSwipeDrag();return}
  const t=e.changedTouches[0],dx=t.clientX-start.x,dy=t.clientY-start.y;
- if(Date.now()-start.at>800||Math.abs(dx)<85||Math.abs(dx)<Math.abs(dy)*1.65)return;
+ if(Date.now()-start.at>800||Math.abs(dx)<85||Math.abs(dx)<Math.abs(dy)*1.65){clearSwipeDrag();return}
  const order=swipeTabOrder(),idx=order.indexOf(view);
- if(idx<0)return;
+ if(idx<0){clearSwipeDrag();return}
  const next=idx+(dx<0?1:-1);
- if(next<0||next>=order.length)return;
- tabSwipeConsumeUntil=Date.now()+500;
- go(order[next]);
+ if(next<0||next>=order.length){clearSwipeDrag();return}
+ tabSwipeConsumeUntil=Date.now()+580;
+ animateTabSwipe(order[next],dx);
 },{passive:true});
-swipeZone.addEventListener('touchcancel',()=>{tabSwipeStart=null},{passive:true});
+swipeZone.addEventListener('touchcancel',()=>{tabSwipeStart=null;if(!tabSwipeBusy)clearSwipeDrag()},{passive:true});
 swipeZone.addEventListener('click',e=>{
  if(Date.now()<tabSwipeConsumeUntil){e.preventDefault();e.stopImmediatePropagation()}
 },true);
