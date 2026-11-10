@@ -9,7 +9,7 @@ await page.route('https://cdn.jsdelivr.net/npm/@supabase/**',route=>route.abort(
 try {
  await page.goto(origin,{waitUntil:'domcontentloaded'});
  await page.waitForSelector('#mobileNav button');
- assert.match(await page.locator('#appVersion').innerText(),/v3\.4\.0/);
+ assert.match(await page.locator('#appVersion').innerText(),/v3\.5\.0/);
  assert.match(await page.locator('.brand').innerText(),/House & Cart/);
  assert.equal(await page.locator('.mobile-bottom-nav button').count(),5);
  assert.equal(await page.locator('#cloudStatusDetail').count(),0);
@@ -61,8 +61,20 @@ try {
  assert.equal(await page.getByRole('dialog').isVisible(),false);
 
  await page.locator('#mobileNav button[data-mobile-view="meals"]').click();
+ // Recipe families can be created, renamed and reused independently of meal occasions.
+ await page.getByRole('button',{name:/Manage families/}).click();
+ assert.equal(await page.getByRole('dialog',{name:/Manage recipe families/}).isVisible(),true);
+ await page.locator('#newRecipeFamily').fill('Risotto');
+ await page.locator('#addRecipeFamilyForm button[type="submit"]').click();
+ assert.equal(await page.locator('.family-editor-row[data-name="Risotto"]').count(),1);
+ await page.locator('.family-editor-row[data-name="Risotto"] input').fill('Risotto & Rice');
+ await page.locator('.family-editor-row[data-name="Risotto"] button[data-action="rename"]').click();
+ assert.equal(await page.locator('.family-editor-row[data-name="Risotto & Rice"]').count(),1);
+ await page.locator('#modalback .x').click();
  await page.getByRole('button',{name:/Create meal/}).click();
  assert.equal(await page.locator('#mealForm select[name="category"] option').filter({hasText:'Midnight feast'}).count(),1,'Custom occasion appears in recipe category choices');
+ assert.equal(await page.locator('#mealForm select[name="family"] option').filter({hasText:'Risotto & Rice'}).count(),1);
+ await page.locator('#mealForm select[name="family"]').selectOption({label:'Risotto & Rice'});
  await page.getByRole('button',{name:/Add ingredient/}).click();
  const row=page.locator('.ingredient-row').first();
  await row.locator('.search-picker input').fill('Milk');
@@ -71,17 +83,42 @@ try {
  await page.locator('#mealForm input[name="name"]').fill('Strawberry smoothie');
  await page.locator('#mealForm button[type="submit"],#mealForm button.btn.green').first().click();
  assert.equal(await page.locator('#mealGrid .meal-card').count(),1);
+ assert.equal(await page.evaluate(()=>db.meals[0].family),'Risotto & Rice');
+ assert.equal(await page.locator('.meal-card .family-inline-tag').innerText(),'Risotto & Rice');
+ const cardFavorite=page.locator('.meal-card-favorite').first();
+ assert.equal(await cardFavorite.getAttribute('aria-pressed'),'false');
+ await cardFavorite.click();
+ assert.equal(await page.evaluate(()=>db.meals[0].favorite),true,'Card heart toggles without opening recipe');
+ assert.equal(await page.getByRole('dialog').isVisible(),false);
  await page.locator('.meal-card h3').first().click();
  const favoriteButton=page.locator('.recipe-favorite-button');
- assert.match(await favoriteButton.innerText(),/Add to favorites/);
- await favoriteButton.click();
- assert.equal(await favoriteButton.getAttribute('aria-pressed'),'true');
- assert.equal(await page.evaluate(()=>db.meals[0].favorite),true);
+ assert.equal(await favoriteButton.innerText(),'♥');
+ assert.match(await favoriteButton.getAttribute('aria-label'),/Remove from favorites/);
+ assert.ok(await page.locator('.recipe-title-and-favorite h1').count()===1,'Favorite appears on the title row');
  await favoriteButton.click();
  assert.equal(await favoriteButton.getAttribute('aria-pressed'),'false');
  assert.equal(await page.evaluate(()=>db.meals[0].favorite),false);
+ await favoriteButton.click();
+ assert.equal(await favoriteButton.getAttribute('aria-pressed'),'true');
+ assert.equal(await page.evaluate(()=>db.meals[0].favorite),true);
  await page.locator('#modalback .x').click();
 
+
+ // Assignments survive a rename, and deletion clears only the family assignment, not the recipe.
+ await page.getByRole('button',{name:/Manage families/}).click();
+ await page.locator('.family-editor-row[data-name="Risotto & Rice"] input').fill('Rice dishes');
+ await page.locator('.family-editor-row[data-name="Risotto & Rice"] button[data-action="rename"]').click();
+ assert.equal(await page.evaluate(()=>db.meals[0].family),'Rice dishes');
+ assert.equal(await page.locator('.family-filter-chips button[data-family="Rice dishes"]').count(),1);
+ page.once('dialog',dialog=>dialog.accept());
+ await page.locator('.family-editor-row[data-name="Rice dishes"] button[data-action="delete"]').click();
+ assert.equal(await page.evaluate(()=>db.meals[0].family),'');
+ assert.equal(await page.locator('#mealGrid .meal-card').count(),1,'Deleting a family never deletes recipes');
+ await page.locator('#modalback .x').click();
+ await page.reload({waitUntil:'domcontentloaded'});
+ await page.locator('#mobileNav button[data-mobile-view="meals"]').click();
+ assert.equal(await page.evaluate(()=>getRecipeFamilies().includes('Rice dishes')),false,'Deleted families stay deleted after reload');
+ assert.equal(await page.evaluate(()=>db.meals.length),1,'Saved recipes survive the family deletion');
  await page.locator('#mealSearch').fill('raw');
  assert.equal(await page.locator('#mealGrid .meal-card:not(.hidden)').count(),0,'Word-inside should not match');
  assert.match(await page.locator('#mealSearchSummary').innerText(),/0 recipes/);
@@ -98,11 +135,22 @@ try {
  });
  await page.locator('#mobileNav button[data-mobile-view="home"]').click();
  const homeDay=page.locator('.home-menu-day').first();
- assert.equal(await homeDay.locator('.home-meal-chip').count(),2,'Home summary initially shows at most 2 meals');
- await homeDay.getByRole('button',{name:/3 more/}).click();
+ assert.equal(await homeDay.locator('.home-meal-chip').count(),3,'Home summary shows Breakfast Lunch Dinner if all are planned');
+ await homeDay.getByRole('button',{name:/2 more/}).click();
  assert.equal(await homeDay.locator('.home-meal-chip').count(),5,'Home summary expands when requested');
  await homeDay.getByRole('button',{name:/Show less/}).click();
- assert.equal(await homeDay.locator('.home-meal-chip').count(),2);
+ assert.equal(await homeDay.locator('.home-meal-chip').count(),3);
+
+ await page.evaluate(()=>{
+  const day=dateKey(weekDays()[0]);
+  delete db.plan[day].Lunch;
+  save();render();
+ });
+ assert.equal(await homeDay.locator('.home-meal-chip').count(),2,'Only planned core occasions show (no empty Lunch)');
+ assert.equal(await homeDay.locator('.home-meal-kind').allInnerTexts().then(x=>x.join(',')),'BREAKFAST,DINNER');
+ await homeDay.getByRole('button',{name:/2 more/}).click();
+ assert.equal(await homeDay.locator('.home-meal-chip').count(),4);
+ await homeDay.getByRole('button',{name:/Show less/}).click();
  await page.evaluate(()=>window.scrollTo(0,1000));
  await page.waitForFunction(()=>window.scrollY>100);
  await page.locator('#mobileNav button[data-mobile-view="plan"]').click();
@@ -118,6 +166,9 @@ try {
   Object.defineProperty(end,'changedTouches',{value:[{clientX:65,clientY:380}]});
   node.dispatchEvent(end);
  });
+ assert.equal(await page.evaluate(()=>tabSwipeBusy),true,'A swipe starts an animated transition');
+ await page.waitForFunction(()=>document.querySelector('#mobileNav button.active')?.dataset.mobileView==='meals',{timeout:5000});
+ await page.waitForFunction(()=>!tabSwipeBusy,{timeout:5000});
  assert.equal(await page.locator('#mobileNav button.active').getAttribute('data-mobile-view'),'meals','Left swipe moves to next tab');
  await page.evaluate(()=>{
   const node=document.getElementById('main');
@@ -128,6 +179,8 @@ try {
   Object.defineProperty(end,'changedTouches',{value:[{clientX:320,clientY:380}]});
   node.dispatchEvent(end);
  });
+ await page.waitForFunction(()=>document.querySelector('#mobileNav button.active')?.dataset.mobileView==='home',{timeout:5000});
+ await page.waitForFunction(()=>!tabSwipeBusy,{timeout:5000});
  assert.equal(await page.locator('#mobileNav button.active').getAttribute('data-mobile-view'),'home','Right swipe moves to previous tab');
 
 
@@ -147,7 +200,7 @@ try {
 
  await testMockCloudSync(browser,origin);
  assert.deepEqual(errors,[],'Browser JavaScript exceptions');
- console.log('PASS: custom occasions, compact home, favorites, scroll reset, gestures, metric units, backups, cloud and desktop');
+ console.log('PASS: recipe families create/rename/delete, priority Home meals, card and detail hearts, animated swipes, backups, cloud and desktop');
 }finally{
  await browser.close();
 }
