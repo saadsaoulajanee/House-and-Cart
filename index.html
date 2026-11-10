@@ -81,14 +81,81 @@
 .unit-control{display:flex;flex-direction:column;gap:6px;min-width:0}.unit-control select,.unit-control input{width:100%;min-width:0}.ingredient-row .unit-control{width:100%}
 .cloud-status-bar .cloud-status-detail{display:none!important}
 @media(max-width:650px){.cloud-status-bar{padding:9px 12px;gap:8px;min-height:44px}.cloud-status-bar .cloud-status-button{padding:6px 9px;font-size:12px}.cloud-status-bar strong{font-size:13px}.tabs{overflow-x:auto;max-width:100%;scrollbar-width:thin}.tabs button{flex-shrink:0}}
+
+/* v3.3 design system — refined linen, ink and terracotta */
+:root{--bg:#f8f5f0;--paper:#ffffff;--ink:#252b2a;--muted:#767b78;--line:#e9e6df;--green:#b96045;--green2:#fcf0e8;--lime:#e7e1d6;--orange:#cb884a;--red:#bd4c42;--shadow:0 8px 28px rgba(41,41,32,.045)}
+html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
+body{background:radial-gradient(circle at 96% -8%,#f0ddce 0,transparent 34%),radial-gradient(circle at -20% 34%,#f4f1eb 0,transparent 38%),var(--bg);color:var(--ink);font-family:ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;line-height:1.52}
+.app{max-width:1390px;padding:24px clamp(16px,4vw,46px) 40px}
+.top{align-items:center;gap:14px;margin-bottom:14px;padding:12px 16px;background:rgba(255,255,255,.82);border:1px solid #ece7df;border-radius:20px;box-shadow:0 8px 30px #262c2410;backdrop-filter:blur(10px)}
+.brand{gap:12px;min-width:0}.brand>div>span:first-child{font-family:Georgia,serif!important;font-size:clamp(21px,2.5vw,29px)!important;letter-spacing:-1px!important;white-space:nowrap}
+.brand-logo{width:48px;height:48px;object-fit:cover;border-radius:14px;box-shadow:none;background:#20272c}
+.brand .smalltext{font-family:ui-sans-serif,system-ui;font-size:9px!important;letter-spacing:1.55px!important;color:#8f8178}
+.version-tag{font:700 10px ui-sans-serif,system-ui;background:#f9ece3;color:#ad6a4f}
+.top-actions{gap:8px}.top-actions .btn{border-radius:12px;box-shadow:none}
+.btn{border-radius:12px;transition:transform .16s ease,box-shadow .16s ease,background .16s ease}
+.btn:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 5px 15px #47332616}.btn.green{background:#ae5c45}.btn.soft{background:#fbede5;color:#a3523d}.btn.ghost{background:#f3f3f0;color:#424846}
+.nav{border-bottom:1px solid var(--line);gap:6px;scrollbar-width:thin;margin:0 0 17px;padding-bottom:13px}
+.nav button{border-radius:12px;padding:10px 16px;font-size:13px;font-weight:700;transition:background .15s}.nav button.active{background:#252c2b;color:#fff;box-shadow:none}.nav button:hover:not(.active){background:#eeebe6;color:#323937}
+.hero{padding:8px 0 4px;margin:0 0 17px;align-items:flex-end}.hero h1{font-family:Georgia,serif;font-size:clamp(32px,4.2vw,48px);font-weight:500;letter-spacing:-1.5px;line-height:1.1}.hero .sub{max-width:650px;color:#787b79;line-height:1.55}.eyebrow{color:#b65f46;font:800 10px ui-sans-serif,system-ui;letter-spacing:1.8px}
+.card{background:rgba(255,255,255,.91);border:1px solid #eae6df;border-radius:18px;padding:19px;box-shadow:var(--shadow);min-width:0}
+.stat strong{font:700 clamp(28px,3vw,36px) ui-sans-serif,system-ui;letter-spacing:-1.6px;color:#2e3534}.stat span{font-family:ui-sans-serif,system-ui}
+.grid{gap:14px}.meal-card{border-radius:17px;padding:12px;box-shadow:0 5px 18px #24261f07}.meal-card:hover{box-shadow:0 12px 29px #24261f14}
+.meal-photo{border-radius:12px;height:174px}.day{border-radius:17px;border-color:#e8e5dc;background:#fff;padding:16px}.dayhead{border-bottom:1px solid #eeeae2;padding-bottom:10px;margin-bottom:12px}
+.slot{background:#fdfcf9;border-color:#eeece8;border-radius:11px}.tabs{gap:7px}.tabs button{border-color:#e7e2db;padding:8px 13px;color:#565e59}.tabs button.active{background:#ab5b45;border-color:#ab5b45}
+.field label{color:#505d56;font-weight:750;font-size:12px}.field input,.field select,.field textarea,.search-picker input{border-color:#dddcd6;border-radius:11px;background:#fff;padding:11px 12px}
+.field input:focus,.search-picker input:focus{border-color:#b26952}.empty{border:1px dashed #d9d3c9;background:#faf8f5;border-radius:13px;padding:20px}
+.modalback{background:#1d2925a3;backdrop-filter:blur(4px)}.modal{border-radius:21px;background:#fffdfa;box-shadow:0 36px 80px #1a2b2845}
+.modalhead{position:sticky;top:-20px;background:#fffdfa;padding:5px 0 11px;z-index:4;border-bottom:1px solid #eee9e2}
+.cloud-status-bar{display:inline-flex;min-height:0;align-items:center;gap:9px;flex-wrap:nowrap;margin:1px 0 15px;padding:7px 12px;border:1px solid #e1e7df;border-radius:999px;background:#f7faf6;font-size:12px;box-shadow:none}
+.cloud-status-bar strong{font-weight:750;color:#44534a}.cloud-status-dot{width:8px;height:8px;flex:0 0 8px}.cloud-status-bar[data-state="synced"]{background:#f2faf4;border-color:#dceee1}.cloud-status-bar[data-state="error"]{background:#fff4f1;border-color:#f1d5d0}
+.mode-row{margin:1px 0 14px!important}.mode-row .tabs button{font-size:13px;padding:9px 14px}
+.mobile-menu-button,.mobile-bottom-nav{display:none}
+.backup-notice{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin:0 0 16px;padding:14px 16px;border-radius:15px;border:1px solid #ebdccd;background:#fffaf3}
+.backup-notice-content{flex:1 1 230px}.backup-notice-content b{display:block;font-size:13px;color:#594c3d}.backup-notice-content p{margin:3px 0 0;font-size:12px;color:#776a5c}.backup-notice .btn{font-size:12px}
+.search-summary{min-height:24px;font-size:12px;color:#727872;margin:3px 0 10px}.search-no-results{padding:16px;text-align:center;border:1px dashed #d9d3c9;border-radius:13px;color:#707872;background:#fdfbf7;margin:8px 0}
+.ingredient-row .quantity-preview{grid-column:2 / 4;font-size:11px;color:#9e5a43;font-weight:750;line-height:1.4;min-height:1.1em}
+.ingredient-row .ing-remove{width:34px;min-height:36px;align-self:center}
+.ingredient-row .ing-qty-wrap,.ingredient-row .ing-unit-wrap{min-width:0}
+.ingredient-row .unit-control select{padding:9px 7px}
+.planner-extra-toggle{margin-top:10px;background:transparent;border:1px dashed #d9c8bc;border-radius:10px;padding:9px 11px;color:#9b5b44;font-size:12px;font-weight:700;width:100%;min-height:39px}
+.planner-extra-toggle:hover{background:#fcf2ec}
+.day .slot[data-extra="true"]{background:#fff9f5;border-color:#efe0d5}
+:where(button,a,input,textarea,select,[role="button"]):focus-visible{outline:3px solid #6a9a89!important;outline-offset:3px!important}
+@media(max-width:840px){.top-actions .pill{display:none}.app{padding:14px 16px 28px}.top{padding:12px}}
+@media(max-width:650px){
+ html{scroll-padding-top:15px}
+ body{padding-bottom:calc(76px + env(safe-area-inset-bottom));overflow-x:hidden}
+ .app{padding:10px 13px 22px}.top{padding:10px 11px;display:flex;flex-wrap:nowrap;justify-content:space-between;align-items:center;margin-bottom:11px;border-radius:17px;gap:8px}
+ .brand{gap:9px}.brand-logo{width:42px;height:42px;border-radius:12px}.brand>div>span:first-child{font-size:21px!important;white-space:nowrap}.brand .smalltext{font-size:8px!important;letter-spacing:1px!important}.version-tag{font-size:9px;padding:1px 5px}
+ .top-actions{display:none!important}
+ .mobile-menu-button{display:inline-flex;gap:6px;align-items:center;justify-content:center;flex:none;border:1px solid #e8e2d9;background:#fbf8f4;color:#424645;font-size:12px;font-weight:750;padding:10px 12px;border-radius:11px;min-height:42px}
+ .nav{display:none!important}
+ .mobile-bottom-nav{position:fixed;display:flex;align-items:stretch;justify-content:space-between;bottom:0;left:0;right:0;z-index:15;padding:8px max(7px,env(safe-area-inset-left)) calc(7px + env(safe-area-inset-bottom)) max(7px,env(safe-area-inset-right));gap:3px;background:rgba(255,253,250,.98);border-top:1px solid #e9e3da;box-shadow:0 -6px 24px #29352e12;backdrop-filter:blur(14px)}
+ .mobile-bottom-nav button{border:0;border-radius:13px;background:transparent;color:#69716e;display:flex;flex:1 1 0;min-width:0;align-items:center;justify-content:center;flex-direction:column;gap:2px;font:650 10px ui-sans-serif,system-ui;padding:6px 0;min-height:51px}
+ .mobile-bottom-nav .nav-symbol{font-size:20px;line-height:1.15}
+ .mobile-bottom-nav button.active{background:#f9ede5;color:#a5523d}
+ .cloud-status-bar{margin:0 0 12px;padding:6px 11px;border-radius:999px;min-height:30px}
+ .cloud-status-bar strong{font-size:12px}
+ .mode-row{margin:1px 0 10px!important}.mode-row #modeCaption{display:none}
+ .hero{margin:0 0 15px;gap:9px}.hero h1{font-size:clamp(29px,7.7vw,37px);letter-spacing:-1.25px}.hero .sub{font-size:13px}
+ .card{padding:14px;border-radius:16px}.grid{gap:10px}
+ .day{padding:13px;border-radius:15px}.meal-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.meal-photo{height:126px}
+ .ingredient-row{grid-template-columns:minmax(0,1fr) 72px minmax(88px,.8fr) 34px;gap:5px;padding:9px 0;border-bottom:1px solid #eeeae4}
+ .ingredient-row .search-picker{grid-column:1/-1}.ingredient-row .ing-qty-wrap{grid-column:1/2}.ingredient-row .ing-unit-wrap{grid-column:2/4}.ingredient-row .ing-remove{grid-column:4}.ingredient-row .quantity-preview{grid-column:1/-1}
+ .modalback{padding:5px;align-items:flex-end}.modal{width:100%;max-height:94dvh;padding:17px 15px 24px;border-radius:20px 20px 6px 6px}.modalhead{top:-17px}
+ .tabs{flex-wrap:nowrap;overflow-x:auto;padding:2px 0 5px;scrollbar-width:none}.tabs button{flex:0 0 auto;white-space:nowrap}
+ .backup-notice{padding:12px;gap:9px}
+}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*::before,*::after{transition:none!important;animation:none!important}}
 </style>
 </head>
 <body><div class="app">
-<header class="top"><div class="brand"><div class="logo">🥑</div><div><span style="font-family:Georgia,serif;font-size:27px;font-weight:500;letter-spacing:-1px">Maison</span><div class="smalltext" style="letter-spacing:2px;text-transform:uppercase;font-size:9px">A little order for everyday living</div><span class="version-tag" id="appVersion" title="Maison app version">v3.2.1</span></div></div><div class="top-actions"><span class="pill" id="saveState">Saved on this device</span><button class="btn soft small" onclick="exportData()">Export backup</button><button class="btn ghost small" onclick="document.getElementById('importFile').click()">Import</button><button class="btn green small" onclick="openCloudAccount()">Account & sync</button><input id="importFile" type="file" accept=".json,application/json" hidden></div></header>
+<header class="top"><div class="brand"><img class="logo brand-logo" src="./icon-192.png" width="48" height="48" alt="House & Cart icon"><div><span style="font-family:Georgia,serif;font-size:27px;font-weight:500;letter-spacing:-1px">House &amp; Cart</span><div class="smalltext" style="letter-spacing:2px;text-transform:uppercase;font-size:9px">Your everyday home companion</div><span class="version-tag" id="appVersion" title="House & Cart app version">v3.3.0</span></div></div><div class="top-actions"><span class="pill" id="saveState">Saved on this device</span><button class="btn soft small" onclick="exportData()">Export backup</button><button class="btn ghost small" onclick="document.getElementById('importFile').click()">Import</button><button class="btn green small" onclick="openCloudAccount()">Account & sync</button><input id="importFile" type="file" accept=".json,application/json" hidden></div><button class="mobile-menu-button" type="button" aria-label="Open app menu" onclick="openMoreMenu()">☰ <span>Menu</span></button></header>
 <div class="cloud-status-bar" id="cloudStatusBar" data-state="local" role="status" aria-live="polite"><span class="cloud-status-dot" aria-hidden="true"></span><strong id="cloudStatusLabel">Saved on this device</strong></div>
-<div class="row mode-row" style="justify-content:space-between;align-items:center;margin:8px 0 4px"><div class="tabs" style="margin:0"><button id="modeKitchen" class="active" onclick="setMode('kitchen')">🍋 Kitchen</button><button id="modeCare" onclick="setMode('care')">🧺 Home care</button></div><span class="smalltext" id="modeCaption">Recipes, ingredients & weekly rituals</span></div><nav class="nav" id="nav"><button data-view="home" class="active">⌂ Overview</button><button data-view="meals">♡ Recipes</button><button data-view="plan">▦ Planner</button><button data-view="shop">🛒 Shopping</button><button data-view="kitchen">🥬 Pantry</button><button data-view="history">↗ History</button><button data-view="cookable" style="display:none">✨ What can I cook?</button><button data-view="budget" style="display:none">◉ Budget</button></nav>
-<main id="main"></main></div>
-<div class="modalback" id="modalback"><div class="modal"><div class="modalhead"><h2 id="modtitle">Edit</h2><button class="x" onclick="closeModal()">✕</button></div><div id="modbody"></div></div></div>
+<div class="row mode-row" style="justify-content:space-between;align-items:center;margin:8px 0 4px"><div class="tabs" style="margin:0"><button id="modeKitchen" class="active" onclick="setMode('kitchen')">🍋 Kitchen</button><button id="modeCare" onclick="setMode('care')">🧺 Home care</button></div><span class="smalltext" id="modeCaption">Recipes, ingredients & weekly rituals</span></div><nav class="nav" id="nav" aria-label="Main navigation"><button data-view="home" class="active">⌂ Overview</button><button data-view="meals">♡ Recipes</button><button data-view="plan">▦ Planner</button><button data-view="shop">🛒 Shopping</button><button data-view="kitchen">🥬 Pantry</button><button data-view="history">↗ History</button><button data-view="cookable" style="display:none">✨ What can I cook?</button><button data-view="budget" style="display:none">◉ Budget</button></nav>
+<main id="main" tabindex="-1"></main></div><nav id="mobileNav" class="mobile-bottom-nav" aria-label="Mobile navigation"></nav>
+<div class="modalback" id="modalback"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="modtitle" tabindex="-1"><div class="modalhead"><h2 id="modtitle">Edit</h2><button class="x" type="button" aria-label="Close dialog" onclick="closeModal()">✕</button></div><div id="modbody"></div></div></div>
 <script>
 const KEY='mealc_cart_web_v1';
 const CATS=['Produce','Dairy & eggs','Meat & seafood','Bakery','Pantry','Spices','Frozen','Drinks','Household','Other'];
@@ -443,5 +510,52 @@ const _shopView30=shopView;shopView=function(){return _shopView30().replace('<di
 const _render30=render;render=function(){_render30();let nav=document.getElementById('nav');if(appMode==='kitchen'){[['cookable','✨ What can I cook?'],['budget','◉ Budget']].forEach(([v,t])=>{let b=nav.querySelector(`[data-view="${v}"]`);if(b){b.style.display='';b.classList.toggle('active',view===v)}});if(view==='cookable')document.getElementById('main').innerHTML=cookableView();if(view==='budget')document.getElementById('main').innerHTML=budgetView()}else nav.querySelectorAll('[data-view="cookable"],[data-view="budget"]').forEach(b=>b.style.display='none')};
 function dragRecipe(e,id){e.dataTransfer.setData('text/plain',id)}function dropRecipe(e,day,slot){e.preventDefault();let id=e.dataTransfer.getData('text/plain'),m=mealById(id);if(!m)return;db.plan[day]??={};db.plan[day][slot]={mealId:id,servings:m.servings||2};save();render()}
 if(!document.getElementById('cookOverlay')){let o=document.createElement('div');o.id='cookOverlay';o.className='cook-overlay';document.body.append(o)}
+</script>
+<script>
+
+/* Adaptive navigation + accessible mobile actions */
+const MOBILE_NAV_KITCHEN=[['home','⌂','Home'],['meals','♡','Recipes'],['plan','▦','Plan'],['kitchen','◫','Pantry'],['shop','🛒','Shop']];
+const MOBILE_NAV_CARE=[['home','⌂','Home'],['meals','✦','Essentials'],['kitchen','◫','Cupboard'],['shop','🧺','Restock']];
+function renderMobileNav(){
+ const el=document.getElementById('mobileNav');if(!el)return;
+ const items=appMode==='care'?MOBILE_NAV_CARE:MOBILE_NAV_KITCHEN;
+ el.innerHTML=items.map(([v,icon,label])=>'<button type="button" data-mobile-view="'+v+'" class="'+(view===v?'active':'')+'" aria-label="'+label+'" '+(view===v?'aria-current="page"':'')+'><span class="nav-symbol" aria-hidden="true">'+icon+'</span><span>'+label+'</span></button>').join('');
+}
+document.getElementById('mobileNav').addEventListener('click',e=>{let b=e.target.closest('[data-mobile-view]');if(b){go(b.dataset.mobileView);scrollTo({top:0,behavior:'instant'})}});
+function openMoreMenu(){
+ const entries=appMode==='care'?[['home','Overview'],['meals','Essentials'],['kitchen','Supply cupboard'],['shop','Restock cart']]:[['home','Overview'],['meals','Recipes'],['plan','Meal planner'],['kitchen','Pantry & ingredients'],['shop','Shopping list'],['cookable','What can I cook?'],['budget','Budget'],['history','Shopping history']];
+ showModal('Explore House & Cart','<p class="smalltext">Everything for your home, in one place.</p><div class="quick-menu-grid">'+entries.map(([v,label])=>'<button type="button" class="quick-menu-item" onclick="closeModal();go(\''+v+'\');window.scrollTo(0,0)">'+label+' <span aria-hidden="true">›</span></button>').join('')+'</div><div class="quick-menu-tools"><button type="button" class="btn soft" onclick="closeModal();openCloudAccount()">☁ Account & sync</button><button type="button" class="btn ghost" onclick="exportData()">↓ Download backup</button><button type="button" class="btn ghost" onclick="closeModal();document.getElementById(\'importFile\').click()">↑ Import backup</button><button type="button" class="btn ghost" onclick="closeModal();restoreSafetySnapshot()">↶ Recovery snapshot</button></div>');
+}
+const _houseCartRenderBase=render;
+render=function(){_houseCartRenderBase();renderMobileNav();updateBackupNotice()};
+const _houseCartSetModeBase=setMode;
+setMode=function(mode){_houseCartSetModeBase(mode);renderMobileNav()};
+const _houseCartGoBase=go;
+go=function(v){_houseCartGoBase(v);renderMobileNav()};
+let previousModalFocus=null;
+const _houseCartShowModalBase=showModal;
+showModal=function(title,body){
+ previousModalFocus=document.activeElement;
+ _houseCartShowModalBase(title,body);
+ document.getElementById('modalback').querySelector('.modal')?.setAttribute('aria-label',title);
+ const close=document.getElementById('modalback').querySelector('.x');
+ if(close)close.focus({preventScroll:true});
+};
+const _houseCartCloseModalBase=closeModal;
+closeModal=function(){_houseCartCloseModalBase();if(previousModalFocus?.isConnected)previousModalFocus.focus({preventScroll:true})};
+document.addEventListener('keydown',e=>{
+ if(e.key==='Escape'&&document.getElementById('modalback').classList.contains('show')){closeModal();return}
+ if(e.key==='Tab'&&document.getElementById('modalback').classList.contains('show')){
+  let dialog=document.getElementById('modalback').querySelector('.modal');
+  let focusable=[...dialog.querySelectorAll('button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),a[href]')].filter(x=>x.offsetParent!==null);
+  if(!focusable.length)return;
+  let first=focusable[0],last=focusable[focusable.length-1];
+  if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus()}
+  else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus()}
+ }
+});
+const style=document.createElement('style');style.textContent='.quick-menu-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin:14px 0}.quick-menu-item{border:1px solid #eae2d9;background:#fff;padding:15px 12px;text-align:left;display:flex;justify-content:space-between;border-radius:12px;color:#333a36;font:700 13px ui-sans-serif,system-ui;min-height:53px}.quick-menu-item span{color:#b45e42}.quick-menu-tools{display:flex;gap:9px;flex-wrap:wrap;padding-top:14px;border-top:1px solid #eee8e0}.quick-menu-tools .btn{min-height:44px}.quick-menu-tools .btn:first-child{background:#ad5d48;color:white}';document.head.append(style);
+renderMobileNav();
+
 </script>
 </body></html>
