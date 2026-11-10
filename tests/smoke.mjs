@@ -134,11 +134,11 @@ try {
  assert.equal(await page.evaluate(()=>resolveRecipe(db.meals[0],db.meals[0].variants[0].id).tags.includes('Dairy-free')),true);
  assert.match(await page.locator('#modbody .recipe-detail').innerText(),/Sear the salmon until golden/);
  assert.ok(await page.locator('.version-pill').count()>=2);
- assert.equal(await page.locator('#modbody .recipe-detail').getByText('Salmon').count(),1);
- assert.equal(await page.locator('#modbody .recipe-detail').getByText('Milk').count(),0);
+ assert.equal(await page.locator('#modbody .recipe-detail').getByText('Salmon',{exact:true}).count(),1);
+ assert.equal(await page.locator('#modbody .recipe-detail').getByText('Milk',{exact:true}).count(),0);
  await page.locator('.version-pill',{hasText:'Original'}).click();
- assert.equal(await page.locator('#modbody .recipe-detail').getByText('Milk').count(),1);
- assert.equal(await page.locator('#modbody .recipe-detail').getByText('Salmon').count(),0);
+ assert.equal(await page.locator('#modbody .recipe-detail').getByText('Milk',{exact:true}).count(),1);
+ assert.equal(await page.locator('#modbody .recipe-detail').getByText('Salmon',{exact:true}).count(),0);
  await page.locator('.version-pill',{hasText:'Fish'}).click();
  await page.getByRole('button',{name:/Cooking mode/}).click();
  assert.match(await page.locator('#cookOverlay').innerText(),/Sear the salmon/);
