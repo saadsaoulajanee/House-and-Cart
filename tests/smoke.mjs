@@ -9,7 +9,7 @@ await page.route('https://cdn.jsdelivr.net/npm/@supabase/**',route=>route.abort(
 try {
  await page.goto(origin,{waitUntil:'domcontentloaded'});
  await page.waitForSelector('#mobileNav button');
- assert.match(await page.locator('#appVersion').innerText(),/v3\.3\.0/);
+ assert.match(await page.locator('#appVersion').innerText(),/v3\.4\.0/);
  assert.match(await page.locator('.brand').innerText(),/House & Cart/);
  assert.equal(await page.locator('.mobile-bottom-nav button').count(),5);
  assert.equal(await page.locator('#cloudStatusDetail').count(),0);
@@ -17,6 +17,15 @@ try {
  assert.equal(await page.evaluate(()=>formatQuantity(300,'ml')),'300 mL');
  assert.equal(await page.evaluate(()=>formatQuantity(1000,'ml')),'1 L');
  assert.equal(await page.evaluate(()=>formatQuantity(1500,'ml')),'1.5 L');
+ assert.equal(await page.evaluate(()=>formatQuantity(1250,'g')),'1.25 kg');
+ assert.equal(await page.evaluate(()=>formatQuantity(0.25,'kg')),'250 g');
+ assert.equal(await page.evaluate(()=>formatQuantity(1500,'mg')),'1.5 g');
+ assert.equal(await page.evaluate(()=>formatQuantity(100,'cl')),'1 L');
+ assert.equal(await page.evaluate(()=>formatQuantity(10,'dl')),'1 L');
+ assert.equal(await page.evaluate(()=>formatQuantity(4,'cup')),'1 L');
+ assert.equal(await page.evaluate(()=>formatQuantity(7,'handful')),'7 handful');
+ assert.equal(await page.evaluate(()=>convertQty(2,'tbsp','ml')),30);
+ assert.equal(await page.evaluate(()=>convertQty(1,'kg','g')),1000);
  assert.equal(await page.evaluate(()=>fieldWordMatch('Fresh strawberries','str')),true);
  assert.equal(await page.evaluate(()=>fieldWordMatch('Fresh strawberries','raw')),false);
  assert.equal(await page.evaluate(()=>fieldWordMatch('Goûter maison','gou')),true);
@@ -26,9 +35,24 @@ try {
  assert.equal(await page.locator('.day').count(),7);
  assert.equal(await page.locator('.day .slot[data-extra="true"]').count(),0);
  await page.locator('.day .planner-extra-toggle').first().click();
- assert.ok(await page.locator('.day .slot[data-extra="true"]').count()>=4,'Apéro/Goûter slots are expandable');
- assert.ok(await page.getByText('Apéro',{exact:true}).count()>0);
- assert.ok(await page.getByText('Goûter',{exact:true}).count()>0);
+ assert.equal(await page.getByRole('dialog',{name:/Add a meal occasion/}).isVisible(),true);
+ assert.ok(await page.locator('.occasion-choice[data-occasion="Apéro"]').count()>0);
+ await page.locator('.occasion-choice[data-occasion="Apéro"]').click();
+ assert.equal(await page.locator('.day').first().locator('.slot[data-occasion="Apéro"]').count(),1);
+ assert.equal(await page.locator('.day').first().locator('.slot[data-extra="true"]').count(),1,'Only chosen extra occasion should appear');
+ await page.locator('.day .planner-extra-toggle').first().click();
+ await page.locator('#customOccasionInput').fill('Midnight feast');
+ await page.locator('#customOccasionForm button[type="submit"]').click();
+ assert.equal(await page.locator('.day').first().locator('.slot[data-occasion="Midnight feast"]').count(),1);
+ assert.equal(await page.evaluate(()=>db.settings.customMealOccasions.includes('Midnight feast')),true);
+ await page.reload({waitUntil:'domcontentloaded'});
+ await page.locator('#mobileNav button[data-mobile-view="plan"]').click();
+ assert.equal(await page.locator('.day').first().locator('.slot[data-occasion="Midnight feast"]').count(),1,'Chosen occasion should persist after reload');
+ await page.locator('.day').first().locator('.slot[data-occasion="Midnight feast"] .occasion-remove').click();
+ assert.equal(await page.locator('.day').first().locator('.slot[data-occasion="Midnight feast"]').count(),0,'Occasion removable per day');
+ assert.equal(await page.evaluate(()=>getMealOccasions().includes('Midnight feast')),true,'Custom occasion remains reusable');
+ await page.locator('.day .planner-extra-toggle').first().click();
+ await page.locator('.occasion-choice[data-occasion="Midnight feast"]').click();
 
  await page.locator('.mobile-menu-button').click();
  assert.equal(await page.getByRole('dialog').isVisible(),true);
@@ -38,6 +62,7 @@ try {
 
  await page.locator('#mobileNav button[data-mobile-view="meals"]').click();
  await page.getByRole('button',{name:/Create meal/}).click();
+ assert.equal(await page.locator('#mealForm select[name="category"] option').filter({hasText:'Midnight feast'}).count(),1,'Custom occasion appears in recipe category choices');
  await page.getByRole('button',{name:/Add ingredient/}).click();
  const row=page.locator('.ingredient-row').first();
  await row.locator('.search-picker input').fill('Milk');
@@ -46,6 +71,16 @@ try {
  await page.locator('#mealForm input[name="name"]').fill('Strawberry smoothie');
  await page.locator('#mealForm button[type="submit"],#mealForm button.btn.green').first().click();
  assert.equal(await page.locator('#mealGrid .meal-card').count(),1);
+ await page.locator('.meal-card h3').first().click();
+ const favoriteButton=page.locator('.recipe-favorite-button');
+ assert.match(await favoriteButton.innerText(),/Add to favorites/);
+ await favoriteButton.click();
+ assert.equal(await favoriteButton.getAttribute('aria-pressed'),'true');
+ assert.equal(await page.evaluate(()=>db.meals[0].favorite),true);
+ await favoriteButton.click();
+ assert.equal(await favoriteButton.getAttribute('aria-pressed'),'false');
+ assert.equal(await page.evaluate(()=>db.meals[0].favorite),false);
+ await page.locator('#modalback .x').click();
 
  await page.locator('#mealSearch').fill('raw');
  assert.equal(await page.locator('#mealGrid .meal-card:not(.hidden)').count(),0,'Word-inside should not match');
@@ -55,6 +90,46 @@ try {
  assert.equal(await page.locator('#mealGrid .meal-card:not(.hidden)').count(),1,'Word-start should match');
  await page.locator('#mobileNav button[data-mobile-view="home"]').click();
  assert.equal(await page.locator('.backup-notice').count(),1,'Backup reminder for saved recipes');
+ await page.evaluate(()=>{
+  const key=dateKey(weekDays()[0]),meal=db.meals[0];
+  db.plan[key]??={};
+  for(const occasion of ['Breakfast','Lunch','Dinner','Apéro','Midnight feast'])db.plan[key][occasion]={mealId:meal.id,servings:2};
+  save();render();
+ });
+ await page.locator('#mobileNav button[data-mobile-view="home"]').click();
+ const homeDay=page.locator('.home-menu-day').first();
+ assert.equal(await homeDay.locator('.home-meal-chip').count(),2,'Home summary initially shows at most 2 meals');
+ await homeDay.getByRole('button',{name:/3 more/}).click();
+ assert.equal(await homeDay.locator('.home-meal-chip').count(),5,'Home summary expands when requested');
+ await homeDay.getByRole('button',{name:/Show less/}).click();
+ assert.equal(await homeDay.locator('.home-meal-chip').count(),2);
+ await page.evaluate(()=>window.scrollTo(0,1000));
+ await page.waitForFunction(()=>window.scrollY>100);
+ await page.locator('#mobileNav button[data-mobile-view="plan"]').click();
+ await page.waitForFunction(()=>window.scrollY<2);
+ assert.equal(await page.evaluate(()=>window.scrollY),0,'Tab navigation starts at top');
+ await page.locator('#mobileNav button[data-mobile-view="home"]').click();
+ await page.evaluate(()=>{
+  const node=document.getElementById('main');
+  const start=new Event('touchstart',{bubbles:true});
+  Object.defineProperty(start,'touches',{value:[{clientX:325,clientY:360}]});
+  node.dispatchEvent(start);
+  const end=new Event('touchend',{bubbles:true});
+  Object.defineProperty(end,'changedTouches',{value:[{clientX:65,clientY:380}]});
+  node.dispatchEvent(end);
+ });
+ assert.equal(await page.locator('#mobileNav button.active').getAttribute('data-mobile-view'),'meals','Left swipe moves to next tab');
+ await page.evaluate(()=>{
+  const node=document.getElementById('main');
+  const start=new Event('touchstart',{bubbles:true});
+  Object.defineProperty(start,'touches',{value:[{clientX:60,clientY:360}]});
+  node.dispatchEvent(start);
+  const end=new Event('touchend',{bubbles:true});
+  Object.defineProperty(end,'changedTouches',{value:[{clientX:320,clientY:380}]});
+  node.dispatchEvent(end);
+ });
+ assert.equal(await page.locator('#mobileNav button.active').getAttribute('data-mobile-view'),'home','Right swipe moves to previous tab');
+
 
  const snap=await page.evaluate(()=>snapshotForRecovery('Automated smoke test'));
  assert.equal(snap,true);
@@ -72,7 +147,7 @@ try {
 
  await testMockCloudSync(browser,origin);
  assert.deepEqual(errors,[],'Browser JavaScript exceptions');
- console.log('PASS: mobile navigation, planner, recipe editing, unit formatting, searches, backups, desktop layout');
+ console.log('PASS: custom occasions, compact home, favorites, scroll reset, gestures, metric units, backups, cloud and desktop');
 }finally{
  await browser.close();
 }
