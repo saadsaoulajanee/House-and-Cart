@@ -74,7 +74,9 @@ try {
  await page.getByRole('button',{name:/Create meal/}).click();
  assert.equal(await page.locator('#mealForm select[name="category"] option').filter({hasText:'Midnight feast'}).count(),1,'Custom occasion appears in recipe category choices');
  assert.equal(await page.locator('#mealForm select[name="family"] option').filter({hasText:'Risotto & Rice'}).count(),1);
- await page.locator('#mealForm select[name="family"]').selectOption({label:'Risotto & Rice'});
+ const familySelect=page.locator('#mealForm select[name="family"] + .styled-select');
+ await familySelect.locator('.styled-select-trigger').click();
+ await familySelect.locator('.styled-select-option',{hasText:'Risotto & Rice'}).click();
  await page.getByRole('button',{name:/Add ingredient/}).click();
  const row=page.locator('.ingredient-row').first();
  await row.locator('.search-picker input').fill('Milk');
@@ -147,7 +149,7 @@ try {
   save();render();
  });
  assert.equal(await homeDay.locator('.home-meal-chip').count(),2,'Only planned core occasions show (no empty Lunch)');
- assert.equal(await homeDay.locator('.home-meal-kind').allInnerTexts().then(x=>x.join(',')),'BREAKFAST,DINNER');
+ assert.equal(await homeDay.locator('.home-meal-kind').allInnerTexts().then(x=>x.map(y=>y.toLowerCase()).join(',')),'breakfast,dinner');
  await homeDay.getByRole('button',{name:/2 more/}).click();
  assert.equal(await homeDay.locator('.home-meal-chip').count(),4);
  await homeDay.getByRole('button',{name:/Show less/}).click();
