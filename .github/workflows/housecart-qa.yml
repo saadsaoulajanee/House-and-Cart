@@ -1,0 +1,33 @@
+name: House & Cart quality checks
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+jobs:
+  smoke:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install browser test dependencies
+        run: |
+          npm install --no-save playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Start local web server
+        run: |
+          python3 -m http.server 8765 --bind 127.0.0.1 > /tmp/housecart-http.log 2>&1 &
+          sleep 2
+      - name: Test House & Cart UI
+        run: node tests/smoke.mjs
+      - name: Upload screenshots when available
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: housecart-browser-screenshots
+          path: |
+            housecart-mobile.png
+            housecart-desktop.png
+          if-no-files-found: ignore
