@@ -84,8 +84,8 @@
 </style>
 </head>
 <body><div class="app">
-<header class="top"><div class="brand"><div class="logo">🥑</div><div><span style="font-family:Georgia,serif;font-size:27px;font-weight:500;letter-spacing:-1px">Maison</span><div class="smalltext" style="letter-spacing:2px;text-transform:uppercase;font-size:9px">A little order for everyday living</div><span class="version-tag" id="appVersion" title="Maison app version">v3.2.0</span></div></div><div class="top-actions"><span class="pill" id="saveState">Saved on this device</span><button class="btn soft small" onclick="exportData()">Export backup</button><button class="btn ghost small" onclick="document.getElementById('importFile').click()">Import</button><button class="btn green small" onclick="openCloudAccount()">Account & sync</button><input id="importFile" type="file" accept=".json,application/json" hidden></div></header>
-<div class="cloud-status-bar" id="cloudStatusBar" data-state="local" role="status" aria-live="polite"><span class="cloud-status-dot" aria-hidden="true"></span><strong id="cloudStatusLabel">Saved on this device</strong><button type="button" class="cloud-status-button" id="cloudSyncAction" onclick="cloudSyncAction()">Account &amp; sync</button></div>
+<header class="top"><div class="brand"><div class="logo">🥑</div><div><span style="font-family:Georgia,serif;font-size:27px;font-weight:500;letter-spacing:-1px">Maison</span><div class="smalltext" style="letter-spacing:2px;text-transform:uppercase;font-size:9px">A little order for everyday living</div><span class="version-tag" id="appVersion" title="Maison app version">v3.2.1</span></div></div><div class="top-actions"><span class="pill" id="saveState">Saved on this device</span><button class="btn soft small" onclick="exportData()">Export backup</button><button class="btn ghost small" onclick="document.getElementById('importFile').click()">Import</button><button class="btn green small" onclick="openCloudAccount()">Account & sync</button><input id="importFile" type="file" accept=".json,application/json" hidden></div></header>
+<div class="cloud-status-bar" id="cloudStatusBar" data-state="local" role="status" aria-live="polite"><span class="cloud-status-dot" aria-hidden="true"></span><strong id="cloudStatusLabel">Saved on this device</strong></div>
 <div class="row mode-row" style="justify-content:space-between;align-items:center;margin:8px 0 4px"><div class="tabs" style="margin:0"><button id="modeKitchen" class="active" onclick="setMode('kitchen')">🍋 Kitchen</button><button id="modeCare" onclick="setMode('care')">🧺 Home care</button></div><span class="smalltext" id="modeCaption">Recipes, ingredients & weekly rituals</span></div><nav class="nav" id="nav"><button data-view="home" class="active">⌂ Overview</button><button data-view="meals">♡ Recipes</button><button data-view="plan">▦ Planner</button><button data-view="shop">🛒 Shopping</button><button data-view="kitchen">🥬 Pantry</button><button data-view="history">↗ History</button><button data-view="cookable" style="display:none">✨ What can I cook?</button><button data-view="budget" style="display:none">◉ Budget</button></nav>
 <main id="main"></main></div>
 <div class="modalback" id="modalback"><div class="modal"><div class="modalhead"><h2 id="modtitle">Edit</h2><button class="x" onclick="closeModal()">✕</button></div><div id="modbody"></div></div></div>
@@ -122,7 +122,7 @@ window.addEventListener('online',()=>{if(cloudUser)syncNow('both')});
 
 function refreshCloudStatus(){
  const bar=document.getElementById('cloudStatusBar');if(!bar)return;
- const label=document.getElementById('cloudStatusLabel'),button=document.getElementById('cloudSyncAction');
+ const label=document.getElementById('cloudStatusLabel');
  const source=(document.getElementById('saveState')?.textContent||'').trim();let state='local',message='Saved on this device',hint='Sign in to enable cloud sync';
  if(!navigator.onLine){state='offline';message='Offline';hint=cloudUser?'Changes stay on this device until you reconnect':'No internet connection'}
  else if(!cloudUser){state='local';message='Not connected to cloud';hint='Your changes are saved on this device'}
@@ -131,7 +131,7 @@ function refreshCloudStatus(){
  else if(/setup needed|error|failed/i.test(source)){state='error';message='Cloud sync failed';hint='Tap Retry sync to try again'}
  else if(/pending|changed/i.test(source)){state='pending';message='Cloud sync pending';hint='Local changes are waiting to sync'}
  else{state='pending';message='Cloud connected';hint='Tap Sync now to verify the latest changes'}
- bar.dataset.state=state;label.textContent=message;button.textContent=cloudUser?'↻ Sync now':'Account & sync';button.disabled=syncBusy;
+ bar.dataset.state=state;label.textContent=message;
 }
 function cloudSyncAction(){if(cloudUser)syncNow('both');else openCloudAccount()}
 window.addEventListener('offline',refreshCloudStatus);
