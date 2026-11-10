@@ -343,14 +343,54 @@ function fmtDate(s){return new Date(s+'T12:00:00').toLocaleDateString(undefined,
 function allPlanned(){return Object.values(db.plan||{}).flatMap(day=>Object.values(day||{}).flatMap(slot=>slot?[slot]:[]))}
 function mealById(id){return db.meals.find(m=>m.id===id)}
 function mealCost(m,servings){return (m.ingredients||[]).reduce((sum,x)=>sum+(Number(x.qty)||0)*(Number(x.unitCost)||0),0)*(servings/(Number(m.servings)||1))}
-function unitInfo(unit){let u=norm(unit);const aliases={grams:'gram',kilograms:'kilogram',milliliters:'milliliter',millilitres:'milliliter',liters:'liter',litres:'litre',pieces:'piece',cloves:'clove',eggs:'egg',units:'unit'};u=aliases[u]||u;const groups={mass:{g:1,gram:1,kg:1000,kilogram:1000,mg:.001,milligram:.001},volume:{ml:1,milliliter:1,cl:10,centiliter:10,l:1000,litre:1000,liter:1000},count:{piece:1,pcs:1,unit:1,units:1,each:1,clove:1,cloves:1,egg:1,eggs:1}};for(const [family,units] of Object.entries(groups))if(units[u]!=null)return {family,factor:units[u],canonical:family==='mass'?'g':family==='volume'?'ml':'piece'};return {family:'other:'+u,factor:1,canonical:unit||'unit'}}
-
+function unitInfo(unit){
+ const raw=norm(unit);
+ const aliases={
+  grams:'g',gram:'g',gramme:'g',grammes:'g',
+  kilo:'kg',kilos:'kg',kilogram:'kg',kilograms:'kg',kilogramme:'kg',kilogrammes:'kg',
+  milligram:'mg',milligrams:'mg',milligramme:'mg',milligrammes:'mg',
+  ounce:'oz',ounces:'oz',pound:'lb',pounds:'lb',lbs:'lb',
+  milliliter:'ml',milliliters:'ml',millilitre:'ml',millilitres:'ml',
+  centiliter:'cl',centiliters:'cl',centilitre:'cl',centilitres:'cl',
+  deciliter:'dl',deciliters:'dl',decilitre:'dl',decilitres:'dl',
+  liter:'l',liters:'l',litre:'l',litres:'l',
+  teaspoons:'tsp',teaspoon:'tsp',cuillere_a_cafe:'tsp','cuillere a cafe':'tsp',
+  tablespoons:'tbsp',tablespoon:'tbsp','cuillere a soupe':'tbsp',
+  cups:'cup',piece:'piece',pieces:'piece',pcs:'piece',unit:'piece',units:'piece',each:'piece',
+  cloves:'clove',eggs:'egg'
+ };
+ const u=aliases[raw]||raw;
+ const mass={mg:.001,g:1,kg:1000,oz:28.349523125,lb:453.59237};
+ const volume={ml:1,cl:10,dl:100,l:1000,tsp:5,tbsp:15,cup:250};
+ const count={piece:1,clove:1,egg:1};
+ if(mass[u]!=null)return {family:'mass',factor:mass[u],canonical:'g'};
+ if(volume[u]!=null)return {family:'volume',factor:volume[u],canonical:'ml'};
+ if(count[u]!=null)return {family:'count',factor:count[u],canonical:'piece'};
+ return {family:'other:'+u,factor:1,canonical:String(unit||'unit')};
+}
 const MEAL_SLOTS=['Breakfast','Brunch','Lunch','Apéro','Goûter','Dinner','Snack','Late-night snack'];
-const UNIT_OPTIONS=[['g','g · grams'],['kg','kg · kilograms'],['mg','mg · milligrams'],['ml','mL · millilitres'],['cl','cL · centilitres'],['l','L · litres'],['piece','piece(s)'],['slice','slice(s)'],['clove','clove(s)'],['tsp','tsp · teaspoon(s)'],['tbsp','tbsp · tablespoon(s)'],['cup','cup(s)'],['pinch','pinch(es)'],['can','can(s)'],['pack','pack(s)'],['bottle','bottle(s)'],['bunch','bunch(es)'],['other','Other · custom unit']];
+const UNIT_OPTIONS=[['g','g · grams'],['kg','kg · kilograms'],['mg','mg · milligrams'],['oz','oz · ounces'],['lb','lb · pounds'],['ml','mL · millilitres'],['cl','cL · centilitres'],['dl','dL · decilitres'],['l','L · litres'],['piece','piece(s)'],['slice','slice(s)'],['clove','clove(s)'],['head','head(s)'],['loaf','loaf / loaves'],['jar','jar(s)'],['bag','bag(s)'],['tsp','tsp · teaspoon(s)'],['tbsp','tbsp · tablespoon(s)'],['cup','cup(s) · 250 mL'],['pinch','pinch(es)'],['can','can(s)'],['pack','pack(s)'],['bottle','bottle(s)'],['bunch','bunch(es)'],['other','Other · custom unit']];
 function unitSelect(name,unit='',cls=''){let known=UNIT_OPTIONS.some(x=>x[0]===unit&&unit!=='other');return '<div class="unit-control"><select name="'+name+'" class="'+cls+'" aria-label="Unit of measure" onchange="toggleCustomUnit(this)">'+UNIT_OPTIONS.map(([value,label])=>'<option value="'+value+'" '+((known?unit===value:value==='other')?'selected':'')+'>'+label+'</option>').join('')+'</select><input class="custom-unit" aria-label="Custom unit" placeholder="Enter your unit" value="'+esc(known?'':unit)+'" style="'+(known?'display:none':'')+'"></div>'}
 function toggleCustomUnit(select){const input=select.closest('.unit-control')?.querySelector('.custom-unit');if(input){input.style.display=select.value==='other'?'':'none';input.required=select.value==='other'}}
 function selectedUnit(select){if(!select)return 'piece';return select.value==='other'?(select.closest('.unit-control')?.querySelector('.custom-unit')?.value.trim()||''):select.value}
-function formatQuantity(q,unit){let n=Number(q),u=String(unit||'').trim();if(!Number.isFinite(n))return String(q||'')+(u?' '+u:'');const info=unitInfo(u);if(info.family==='volume'){let ml=n*info.factor;if(Math.abs(ml)>=1000)return Number((ml/1000).toFixed(3))+' L';return Number(ml.toFixed(3))+' mL'}if(info.family==='mass'){let g=n*info.factor;if(Math.abs(g)>=1000)return Number((g/1000).toFixed(3))+' kg';if(Math.abs(g)<1&&g!==0)return Number((g*1000).toFixed(3))+' mg';return Number(g.toFixed(3))+' g'}return Number(n.toFixed(3))+(u?' '+u:'')}
+function formatQuantity(q,unit){
+ const n=Number(q),u=String(unit||'').trim(),info=unitInfo(u);
+ if(!Number.isFinite(n))return String(q??'')+(u?' '+u:'');
+ const pretty=x=>Number(Number(x).toPrecision(8)).toLocaleString(undefined,{maximumFractionDigits:3});
+ if(info.family==='mass'){
+  const grams=n*info.factor;
+  if(Math.abs(grams)>=1000)return pretty(grams/1000)+' kg';
+  if(Math.abs(grams)<1&&grams!==0)return pretty(grams*1000)+' mg';
+  return pretty(grams)+' g';
+ }
+ if(info.family==='volume'){
+  const ml=n*info.factor;
+  if(Math.abs(ml)>=1000)return pretty(ml/1000)+' L';
+  if(['tsp','tbsp','cup'].includes(norm(u)))return pretty(n)+' '+u;
+  return pretty(ml)+' mL';
+ }
+ return pretty(n)+(u?' '+u:'');
+}
 function wordStartsMatch(value,query){let q=norm(query);if(!q)return true;const words=norm(value).split(/\s+/).filter(Boolean);return words.some(w=>w.startsWith(q))}
 function fieldWordMatch(value,query){const q=norm(query);if(!q)return true;return q.split(/\s+/).every(part=>wordStartsMatch(value,part))}
 function convertQty(q,from,to){let a=unitInfo(from),b=unitInfo(to);if(a.family!==b.family)return null;return Number(q||0)*a.factor/b.factor}
@@ -664,7 +704,7 @@ function filterCookable(q){let matches=0;document.querySelectorAll('#cookableGri
 function duplicateMeal(id){let m=mealById(id);if(!m)return;let copy=JSON.parse(JSON.stringify(m));copy.id=uid();copy.name=m.name+' (copy)';copy.favorite=false;db.meals.push(copy);save();render();openMeal(copy.id)}
 const _mealCard30=mealCard;mealCard=function(m){return _mealCard30(m).replace(`<button class="btn ghost small" onclick="event.stopPropagation();toggleFav('${m.id}')">`, `<button class="btn ghost small" onclick="event.stopPropagation();duplicateMeal('${m.id}')">⧉ Duplicate</button><button class="btn ghost small" onclick="event.stopPropagation();toggleFav('${m.id}')">`)};
 const _openRecipe30=openRecipe;openRecipe=function(id){_openRecipe30(id);let a=document.querySelector('#modbody .recipe-detail .row:last-child');if(a)a.insertAdjacentHTML('afterbegin',`<button class="btn ghost" onclick="duplicateMeal('${id}')">⧉ Duplicate</button><button class="btn" onclick="startCooking('${id}')">▶ Cooking mode</button>`)};
-function startCooking(id){let m=mealById(id);if(!m)return;let steps=m.steps||[],o=document.getElementById('cookOverlay');o.innerHTML=`<div class="cook-inner"><div class="row" style="justify-content:space-between"><div><div class="eyebrow">Maison cooking mode</div><h1>${esc(m.name)}</h1></div><button class="btn ghost" onclick="closeCooking()">✕ Exit</button></div><div class="progress"><i id="cookProgress" style="width:${steps.length?100/steps.length:0}%"></i></div><p id="cookCount" class="smalltext">Step ${steps.length?1:0} of ${steps.length}</p><div id="cookStep" class="cook-step">${steps.length?esc(steps[0]):'No cooking steps yet. Edit this recipe to add them.'}</div><div class="row"><button class="btn ghost" id="cookPrev" onclick="cookMove(-1)" disabled>← Previous</button><button class="btn green" id="cookNext" onclick="cookMove(1)" ${steps.length?'':'disabled'}>Next step →</button></div><div class="smart-panel"><b>Ingredients</b>${(m.ingredients||[]).map(x=>`<div class="listline"><span class="grow">${esc(ingById(x.ingredientId)?.name||'')}</span><b>${isSpice(ingById(x.ingredientId))?'To taste':esc(x.qty+' '+x.unit)}</b></div>`).join('')}</div></div>`;o.dataset.steps=JSON.stringify(steps);o.dataset.index='0';o.classList.add('show')}
+function startCooking(id){let m=mealById(id);if(!m)return;let steps=m.steps||[],o=document.getElementById('cookOverlay');o.innerHTML=`<div class="cook-inner"><div class="row" style="justify-content:space-between"><div><div class="eyebrow">Maison cooking mode</div><h1>${esc(m.name)}</h1></div><button class="btn ghost" onclick="closeCooking()">✕ Exit</button></div><div class="progress"><i id="cookProgress" style="width:${steps.length?100/steps.length:0}%"></i></div><p id="cookCount" class="smalltext">Step ${steps.length?1:0} of ${steps.length}</p><div id="cookStep" class="cook-step">${steps.length?esc(steps[0]):'No cooking steps yet. Edit this recipe to add them.'}</div><div class="row"><button class="btn ghost" id="cookPrev" onclick="cookMove(-1)" disabled>← Previous</button><button class="btn green" id="cookNext" onclick="cookMove(1)" ${steps.length?'':'disabled'}>Next step →</button></div><div class="smart-panel"><b>Ingredients</b>${(m.ingredients||[]).map(x=>`<div class="listline"><span class="grow">${esc(ingById(x.ingredientId)?.name||'')}</span><b>${isSpice(ingById(x.ingredientId))?'To taste':esc(formatQuantity(x.qty,x.unit))}</b></div>`).join('')}</div></div>`;o.dataset.steps=JSON.stringify(steps);o.dataset.index='0';o.classList.add('show')}
 function cookMove(d){let o=document.getElementById('cookOverlay'),a=JSON.parse(o.dataset.steps||'[]'),i=Math.max(0,Math.min(a.length-1,(+o.dataset.index||0)+d));o.dataset.index=i;document.getElementById('cookStep').textContent=a[i]||'';document.getElementById('cookCount').textContent=`Step ${i+1} of ${a.length}`;document.getElementById('cookProgress').style.width=((i+1)/a.length*100)+'%';document.getElementById('cookPrev').disabled=i===0;let b=document.getElementById('cookNext');b.textContent=i===a.length-1?'Finish ✓':'Next step →';b.onclick=i===a.length-1?closeCooking:()=>cookMove(1)}
 function closeCooking(){document.getElementById('cookOverlay').classList.remove('show')}
 function expiryPanel(){let a=expiryItems();return `<div class="smart-panel"><div class="sectionhead"><b>⏳ Use these soon</b><span class="badge">${a.length}</span></div>${a.slice(0,5).map(x=>`<div class="listline"><div class="grow"><b>${esc(x.name)}</b><small>${x.days<0?'Past best-before date':x.days===0?'Best before today':'Best before in '+x.days+' day(s)'}</small></div><span class="expiry-tag">${x.days<0?'Past date':x.days===0?'Today':x.days+' days'}</span></div>`).join('')||'<p class="smalltext">No upcoming expiry dates. Your pantry is looking fresh.</p>'}</div>`}
