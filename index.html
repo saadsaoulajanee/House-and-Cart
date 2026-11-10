@@ -204,6 +204,8 @@ body{background:radial-gradient(circle at 96% -8%,#f0ddce 0,transparent 34%),rad
 <div class="modalback" id="modalback"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="modtitle" tabindex="-1"><div class="modalhead"><h2 id="modtitle">Edit</h2><button class="x" type="button" aria-label="Close dialog" onclick="closeModal()">✕</button></div><div id="modbody"></div></div></div>
 <script>
 const KEY='mealc_cart_web_v1';
+const DEFAULT_RECIPE_FAMILIES=['Entrée','Soup','Pasta','Main course','Salad','Side dish','Dessert','Baking','Breakfast','Drink'];
+let recipeFamilyFilter='__all__';
 const CATS=['Produce','Dairy & eggs','Meat & seafood','Bakery','Pantry','Spices','Frozen','Drinks','Household','Other'];
 const DEFAULT_ING=[
 ['Tomato','Produce','piece',['tomatoes']],['Onion','Produce','piece',['onions']],['Garlic','Produce','clove',['garlic cloves']],['Potato','Produce','piece',['potatoes']],['Carrot','Produce','piece',['carrots']],['Bell pepper','Produce','piece',['pepper','peppers']],['Lettuce','Produce','head',['salad']],['Cucumber','Produce','piece',['cucumbers']],['Lemon','Produce','piece',['lemons']],['Banana','Produce','piece',['bananas']],['Apple','Produce','piece',['apples']],['Avocado','Produce','piece',['avocados']],
@@ -425,6 +427,61 @@ function toggleHomeDay(day){
 }
 
 function homeView(){let week=allPlanned(),checked=db.shopping.filter(x=>x.checked).length,spent=db.history.reduce((a,x)=>a+(+x.total||0),0);return `<div class="hero"><div><div class="eyebrow">A calmer kitchen starts here</div><h1>Your food, in good order.</h1><p class="sub">Plan meals, keep your kitchen stocked, and shop with a list that thinks ahead.</p></div><button class="btn green" onclick="openMeal()">＋ Add a meal</button></div><div class="grid"><div class="card stat span3"><span>Meals in your collection</span><strong>${db.meals.length}</strong><span>Recipes ready to roll</span></div><div class="card stat span3"><span>Planned this week</span><strong>${week.length}</strong><span>Meal slots filled</span></div><div class="card stat span3"><span>Shopping list</span><strong>${db.shopping.filter(x=>!x.checked).length}</strong><span>Items still to pick up</span></div><div class="card stat span3"><span>Kitchen inventory</span><strong>${db.inventory.length}</strong><span>Tracked ingredients</span></div><div class="card span7 home-week-menu"><div class="sectionhead"><h2>This week's menu</h2><button class="btn soft small" onclick="go('plan')">Open planner →</button></div><div class="home-menu-days">${weekDays().map(homeDayRow).join('')}</div></div><div class="card span5 home-shopping-progress"><div class="sectionhead"><h2>Shopping progress</h2><button class="btn soft small" onclick="go('shop')">Open list →</button></div><div style="font-size:30px;font-weight:850">${checked}/${db.shopping.length}</div><div class="progress"><i style="width:${db.shopping.length?checked/db.shopping.length*100:0}%"></i></div><p class="smalltext">${db.shopping.length?`${db.shopping.length-checked} things left on the list.`:'Your list is blissfully empty.'}</p><div class="sectionhead" style="margin-top:20px"><h3>Kitchen shortcuts</h3><button class="btn ghost small" onclick="go('kitchen')">Manage →</button></div><p class="smalltext">${db.ingredients.length} ingredients in your library · ${db.inventory.length} inventory entries.</p></div></div>`}
+
+function getRecipeFamilies(){
+ return Array.isArray(db?.settings?.recipeFamilies)?db.settings.recipeFamilies:DEFAULT_RECIPE_FAMILIES;
+}
+function ensureRecipeFamilies(){
+ db.settings??={};if(!Array.isArray(db.settings.recipeFamilies))db.settings.recipeFamilies=[...DEFAULT_RECIPE_FAMILIES];
+ return db.settings.recipeFamilies;
+}
+function cleanRecipeFamilyName(raw){
+ const name=String(raw||'').trim().replace(/\s+/g,' ');
+ return name&&name.length<=35&&!/[\x00-\x1f<>]/.test(name)&&!['__proto__','prototype','constructor'].includes(name.toLowerCase())?name:'';
+}
+function familyUseCount(name){return db.meals.filter(m=>norm(m.family)===norm(name)).length}
+function recipeFamilyError(message){const el=document.getElementById('recipeFamilyError');if(el){el.textContent=message;el.hidden=!message}else if(message)alert(message)}
+function addRecipeFamily(raw){
+ const name=cleanRecipeFamilyName(raw);
+ if(!name){recipeFamilyError('Enter a family name of 1–35 characters.');return false}
+ if(getRecipeFamilies().some(x=>norm(x)===norm(name))){recipeFamilyError('That family already exists.');return false}
+ ensureRecipeFamilies().push(name);save();render();openRecipeFamilies();return true;
+}
+function renameRecipeFamily(oldName,raw){
+ const name=cleanRecipeFamilyName(raw),list=getRecipeFamilies(),i=list.indexOf(oldName);
+ if(i<0){recipeFamilyError('Family not found.');return false}
+ if(!name){recipeFamilyError('Enter a family name of 1–35 characters.');return false}
+ if(list.some((v,j)=>j!==i&&norm(v)===norm(name))){recipeFamilyError('That family already exists.');return false}
+ ensureRecipeFamilies()[i]=name;
+ db.meals.forEach(meal=>{if(meal.family===oldName)meal.family=name});
+ if(recipeFamilyFilter===oldName)recipeFamilyFilter=name;
+ save();render();openRecipeFamilies();return true;
+}
+function deleteRecipeFamily(name){
+ if(!getRecipeFamilies().includes(name))return false;
+ const count=familyUseCount(name);
+ if(!confirm('Delete the "'+name+'" family? '+(count?count+' recipe(s) will become Unassigned. ':'')+'No recipes will be deleted.'))return false;
+ db.settings.recipeFamilies=ensureRecipeFamilies().filter(x=>x!==name);
+ db.meals.forEach(meal=>{if(meal.family===name)meal.family=''});
+ if(recipeFamilyFilter===name)recipeFamilyFilter='__all__';
+ save();render();openRecipeFamilies();return true;
+}
+function openRecipeFamilies(){
+ const rows=getRecipeFamilies().map(name=>
+  '<div class="family-editor-row" data-name="'+esc(name)+'"><div class="family-editor-input"><input class="family-editor-name" aria-label="Rename '+esc(name)+'" maxlength="35" value="'+esc(name)+'"><small class="smalltext">'+familyUseCount(name)+' recipes</small></div><div class="family-editor-actions"><button type="button" class="btn soft small" data-action="rename">Save</button><button type="button" class="btn danger small" data-action="delete">Delete</button></div></div>'
+ ).join('');
+ const create='<form id="addRecipeFamilyForm" class="family-create-form"><label for="newRecipeFamily">New recipe family</label><div class="family-create-row"><input id="newRecipeFamily" maxlength="35" required placeholder="e.g. Risotto, Sauce, Tart…"><button class="btn green" type="submit">＋ Add</button></div></form>';
+ showModal('Manage recipe families','<p class="sub">Organise recipes by type. Rename or delete any family. Deleting a family never deletes recipes.</p><p id="recipeFamilyError" class="family-error" role="alert" hidden></p><div id="recipeFamilyList" class="family-editor-list">'+(rows||'<p class="smalltext">Create your first family below.</p>')+'</div>'+create);
+ document.getElementById('recipeFamilyList').onclick=e=>{
+  const btn=e.target.closest('button[data-action]');if(!btn)return;
+  const row=btn.closest('.family-editor-row'),old=row.dataset.name;
+  if(btn.dataset.action==='rename')renameRecipeFamily(old,row.querySelector('input').value);
+  else if(btn.dataset.action==='delete')deleteRecipeFamily(old);
+ };
+ document.getElementById('addRecipeFamilyForm').onsubmit=e=>{e.preventDefault();addRecipeFamily(document.getElementById('newRecipeFamily').value)};
+}
+function setRecipeFamilyFilter(name){recipeFamilyFilter=name;render()}
+
 function mealsView(){let list=db.meals.filter(m=>mealFilter==='All'||(mealFilter==='Favorites'?m.favorite:(Array.isArray(m.category)?m.category:[m.category||'Dinner']).includes(mealFilter)));return `<div class="hero"><div><div class="eyebrow">Your recipe box</div><h1>Meals</h1><p class="sub">Your personal collection, ready for the weekly plan.</p></div><button class="btn green" onclick="openMeal()">＋ Create meal</button></div><div class="field"><input id="mealSearch" placeholder="Find a recipe or an ingredient…" oninput="filterMealsSearch(this.value)" aria-label="Search recipes and ingredients"></div><p class="search-summary" id="mealSearchSummary" role="status">${list.length} recipes</p><div id="mealSearchEmpty" class="search-no-results hidden">No matching recipes. Try the beginning of another word.</div><div class="tabs">${['All','Favorites',...getMealOccasions()].map(x=>`<button class="${mealFilter===x?'active':''}" onclick="mealFilter='${x}';render()">${x}</button>`).join('')}</div><div class="meal-grid" id="mealGrid">${list.map(mealCard).join('')||'<div class="empty">No meals here yet. Add your first recipe to get cooking.</div>'}</div>`}
 function mealCard(m){return `<article class="meal-card" data-search="${esc(m.name+' '+(m.ingredients||[]).map(x=>ingById(x.ingredientId)?.name||'').join(' '))}" role="button" tabindex="0" onclick="openRecipe('${m.id}')" onkeydown="if(event.key==='Enter')openRecipe('${m.id}')">${m.photo?`<img class="meal-photo" src="${m.photo}" alt="">`:'<div class="meal-photo" style="display:grid;place-items:center;font-size:38px">🍲</div>'}<div class="row" style="justify-content:space-between;margin-top:8px"><span class="badge">${esc((Array.isArray(m.category)?m.category:[m.category||'Dinner']).join(' · '))}</span><span class="smalltext">${m.servings||1} servings</span></div><h3>${esc(m.name)}</h3><div class="smalltext">${(m.ingredients||[]).length} ingredients · ${esc(m.time||'Time not set')} min</div><div class="row"><button class="btn soft small" onclick="event.stopPropagation();openRecipe('${m.id}')">Open recipe</button><button class="btn ghost small" onclick="event.stopPropagation();openMeal('${m.id}')">Edit</button><button class="btn ghost small" onclick="quickPlan('${m.id}')">＋ Plan</button><button class="btn ghost small" onclick="toggleFav('${m.id}')">${m.favorite?'♥':'♡'}</button></div></article>`}
 
