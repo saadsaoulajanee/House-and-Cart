@@ -148,6 +148,12 @@ body{background:radial-gradient(circle at 96% -8%,#f0ddce 0,transparent 34%),rad
  .backup-notice{padding:12px;gap:9px}
 }
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*::before,*::after{transition:none!important;animation:none!important}}
+
+.sync-conflict-options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px;margin:18px 0}
+.sync-conflict-choice{display:flex;align-items:flex-start;flex-direction:column;gap:7px;text-align:left;border:1px solid #e4d8c8;border-radius:14px;padding:16px;background:#fff;min-height:120px}
+.sync-conflict-choice:hover{border-color:#b66045;background:#fff9f5}
+.sync-conflict-choice b{font-size:14px;color:#333932}.sync-conflict-choice small{font-size:12px;color:#797e77;line-height:1.5}
+@media(max-width:560px){.sync-conflict-options{grid-template-columns:1fr}.sync-conflict-choice{min-height:90px}}
 </style>
 </head>
 <body><div class="app">
@@ -176,15 +182,93 @@ let view='home',mealFilter='All',shopFilter='All',appMode='kitchen';
 const SUPABASE_URL='https://rzoyapskmediiucixekf.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY='sb_publishable_FgN14pLyQz_J1qcO5LuIKA_ZDaKhx2N';
 const sb=window.supabase?.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);
-let cloudUser=null,cloudChannel=null,syncBusy=false,lastCloudPayload=null,syncTimer=null;
+let cloudUser=null,cloudChannel=null,syncBusy=false,lastCloudPayload=null,syncTimer=null,cloudRemoteUpdatedAt=null;
+const RECOVERY_KEY='housecart_recovery_snapshot_v1',BACKUP_AT_KEY='housecart_last_backup_export',LAST_SYNC_AT_KEY='housecart_last_cloud_sync';
+function stableJson(value){return JSON.stringify(value,(key,item)=>item&&typeof item==='object'&&!Array.isArray(item)?Object.keys(item).sort().reduce((out,k)=>(out[k]=item[k],out),{}):item)}
+function meaningfulHomeData(p){return !!(p?.meals?.length||p?.inventory?.length||p?.shopping?.length||p?.history?.length||p?.cleaningInventory?.length||p?.cleaningShopping?.length||Object.keys(p?.plan||{}).length||p?.ingredients?.some(i=>i.custom))}
+function snapshotForRecovery(reason='Before a change'){try{const old=localStorage.getItem(RECOVERY_KEY);const entry=JSON.stringify({created_at:new Date().toISOString(),reason,payload:cloudPayload()});localStorage.setItem(RECOVERY_KEY,entry);return true}catch(e){console.warn('Unable to save recovery snapshot',e);return false}}
+function lastSyncText(){let raw=localStorage.getItem(LAST_SYNC_AT_KEY);return raw?new Date(raw).toLocaleString(undefined,{dateStyle:'medium',timeStyle:'short'}):'Not yet'}
+function markCloudSynced(payload,updatedAt){lastCloudPayload=stableJson(payload);cloudRemoteUpdatedAt=updatedAt||new Date().toISOString();localStorage.setItem(LAST_SYNC_AT_KEY,new Date().toISOString());const status=document.getElementById('saveState');if(status)status.textContent='✓ Cloud synced';refreshCloudStatus()}
+
 function save(){localStorage.setItem(KEY,JSON.stringify(db));let s=document.getElementById('saveState');if(s)s.textContent=cloudUser?'Saved locally · cloud sync pending':'Saved on this device';if(cloudUser)scheduleCloudSync()}
 function cloudPayload(){return {meals:db.meals,cleaningInventory:db.cleaningInventory,cleaningShopping:db.cleaningShopping,cleaningEssentials:db.cleaningEssentials,ingredients:db.ingredients,inventory:db.inventory,plan:db.plan,shopping:db.shopping,history:db.history,settings:db.settings}}
 function scheduleCloudSync(){clearTimeout(syncTimer);syncTimer=setTimeout(()=>syncNow('push'),900)}
-async function syncNow(mode='both'){if(!sb||!cloudUser||syncBusy)return;if(!navigator.onLine){refreshCloudStatus();return}syncBusy=true;const status=document.getElementById('saveState');if(status)status.textContent='Syncing…';try{const {data:remote,error}=await sb.from('mealcart_sync_state').select('payload,updated_at').eq('owner_id',cloudUser.id).maybeSingle();if(error)throw error;const local=cloudPayload(),localText=JSON.stringify(local);if(mode==='push'){const {error:e}=await sb.from('mealcart_sync_state').upsert({owner_id:cloudUser.id,payload:local,updated_at:new Date().toISOString()},{onConflict:'owner_id'});if(e)throw e;lastCloudPayload=localText;if(status)status.textContent='✓ Cloud synced';return}if(remote?.payload){const remoteText=JSON.stringify(remote.payload);if(!lastCloudPayload){if(local.meals.length||local.inventory.length||local.shopping.length){if(confirm('Meal Cart cloud data already exists. OK downloads cloud data and replaces this device. Cancel uploads this device instead.'))applyCloudPayload(remote.payload);else{const {error:e}=await sb.from('mealcart_sync_state').upsert({owner_id:cloudUser.id,payload:local,updated_at:new Date().toISOString()},{onConflict:'owner_id'});if(e)throw e;lastCloudPayload=localText}}else applyCloudPayload(remote.payload)}else if(localText!==lastCloudPayload&&remoteText!==lastCloudPayload&&localText!==remoteText){if(confirm('Both this device and the cloud changed. OK keeps the cloud version; Cancel uploads this device version.'))applyCloudPayload(remote.payload);else{const {error:e}=await sb.from('mealcart_sync_state').upsert({owner_id:cloudUser.id,payload:local,updated_at:new Date().toISOString()},{onConflict:'owner_id'});if(e)throw e;lastCloudPayload=localText}}else if(remoteText!==lastCloudPayload&&localText===lastCloudPayload)applyCloudPayload(remote.payload);else if(localText!==lastCloudPayload){const {error:e}=await sb.from('mealcart_sync_state').upsert({owner_id:cloudUser.id,payload:local,updated_at:new Date().toISOString()},{onConflict:'owner_id'});if(e)throw e;lastCloudPayload=localText}}else{const {error:e}=await sb.from('mealcart_sync_state').upsert({owner_id:cloudUser.id,payload:local,updated_at:new Date().toISOString()},{onConflict:'owner_id'});if(e)throw e;lastCloudPayload=localText}if(status)status.textContent='✓ Cloud synced'}catch(e){if(status)status.textContent='Cloud sync setup needed';console.error(e);alert('Cloud sync could not complete: '+(e.message||e))}finally{syncBusy=false;refreshCloudStatus()}}
-function applyCloudPayload(p){if(!p||!Array.isArray(p.meals)||!Array.isArray(p.ingredients))throw Error('Cloud data format is invalid');db={...fresh(),...p};localStorage.setItem(KEY,JSON.stringify(db));lastCloudPayload=JSON.stringify(cloudPayload());render()}
-async function openCloudAccount(){if(!sb){alert('Cloud service is unavailable.');return}const {data:{session},error}=await sb.auth.getSession();if(error){alert(error.message);return}if(session){cloudUser=session.user;showModal('Meal Cart account',`<p class="sub">Signed in as <b>${esc(cloudUser.email||'')}</b></p><p class="smalltext">Meal Cart data syncs to its own private cloud table, separate from The Vault.</p><div class="row"><button class="btn green" id="syncNowBtn">Sync now</button><button class="btn danger" id="signoutBtn">Sign out</button></div>`);document.getElementById('syncNowBtn').onclick=async()=>{closeModal();await syncNow('both')};document.getElementById('signoutBtn').onclick=async()=>{await sb.auth.signOut();cloudUser=null;lastCloudPayload=null;if(cloudChannel)await sb.removeChannel(cloudChannel);cloudChannel=null;closeModal();let el=document.getElementById('saveState');if(el)el.textContent='Saved on this device'};return}showModal('Sign in to Meal Cart',`<p class="sub">Enter your email and we’ll send a secure sign-in link.</p><form id="cloudLogin"><div class="field"><label>Email address</label><input name="email" type="email" required placeholder="you@example.com"></div><button class="btn green">Send sign-in link</button></form>`);document.getElementById('cloudLogin').onsubmit=async e=>{e.preventDefault();const email=new FormData(e.target).get('email');const {error}=await sb.auth.signInWithOtp({email,options:{emailRedirectTo:location.href}});if(error)alert(error.message);else{closeModal();alert('Sign-in link sent. Open it in this same browser, then return to Meal Cart.')}}}
+
+function chooseCloudConflict(){
+ return new Promise(resolve=>{
+  const notice='<p class="sub">House & Cart found different data on this device and in your cloud account. Neither version will be replaced until you choose.</p>'+
+   '<div class="sync-conflict-options">'+
+   '<button type="button" class="sync-conflict-choice" onclick="window._houseCartConflictChoice(\'cloud\')"><b>☁ Use cloud data</b><small>Download the cloud version onto this device. A recovery snapshot will be saved first.</small></button>'+
+   '<button type="button" class="sync-conflict-choice" onclick="window._houseCartConflictChoice(\'local\')"><b>◫ Keep this device</b><small>Upload your local version, replacing the current cloud data.</small></button>'+
+   '</div><div class="row"><button type="button" class="btn soft" onclick="exportData()">↓ Download a safety backup</button><button type="button" class="btn ghost" onclick="window._houseCartConflictChoice(\'cancel\')">Not now</button></div>'+
+   '<p class="smalltext" style="margin-top:12px">Tip: download a backup before choosing if these are important records. Changes from different devices are not merged automatically.</p>';
+  window._houseCartConflictChoice=(choice,noClose=false)=>{
+   window._houseCartConflictChoice=null;
+   if(!noClose)closeModal();
+   resolve(choice);
+  };
+  showModal('Choose which data to keep',notice);
+ });
+}
+async function syncNow(mode='both'){
+ if(!sb||!cloudUser||syncBusy)return false;
+ if(!navigator.onLine){const el=document.getElementById('saveState');if(el)el.textContent='Cloud sync pending · offline';refreshCloudStatus();return false}
+ syncBusy=true;
+ const status=document.getElementById('saveState');if(status)status.textContent='Syncing…';
+ try{
+  const {data:remote,error}=await sb.from('mealcart_sync_state').select('payload,updated_at').eq('owner_id',cloudUser.id).maybeSingle();
+  if(error)throw error;
+  const local=cloudPayload(),localText=stableJson(local);
+  const remoteText=remote?.payload?stableJson(remote.payload):null;
+  let action='none';
+  if(!remoteText)action='upload';
+  else if(remoteText===localText)action='none';
+  else if(!lastCloudPayload)action=meaningfulHomeData(local)?'choose':'download';
+  else if(remoteText===lastCloudPayload)action='upload';
+  else if(localText===lastCloudPayload)action='download';
+  else action='choose';
+  if(action==='choose'){let picked=await chooseCloudConflict();action=picked==='local'?'upload':picked==='cloud'?'download':'cancel'}
+  if(action==='cancel'){
+   if(status)status.textContent='Cloud sync pending · choose a version';
+   return false;
+  }
+  if(action==='download'){
+   if(!snapshotForRecovery('Before cloud download'))throw Error('A recovery copy could not be saved on this device. Download a backup from the Menu first, then retry sync.');
+   applyCloudPayload(remote.payload);
+   markCloudSynced(remote.payload,remote.updated_at);
+  }else if(action==='upload'){
+   const timestamp=new Date().toISOString();
+   let write;
+   if(remote){
+    let request=sb.from('mealcart_sync_state').update({payload:local,updated_at:timestamp}).eq('owner_id',cloudUser.id);
+    request=remote.updated_at?request.eq('updated_at',remote.updated_at):request.is('updated_at',null);
+    write=await request.select('updated_at');
+    if(write.error)throw write.error;
+    if(!write.data?.length)throw Error('Cloud data changed on another device while syncing. Please tap Sync now again to review the latest version.');
+   }else{
+    write=await sb.from('mealcart_sync_state').insert({owner_id:cloudUser.id,payload:local,updated_at:timestamp}).select('updated_at');
+    if(write.error)throw write.error;
+   }
+   markCloudSynced(local,write.data?.[0]?.updated_at||timestamp);
+  }else{
+   markCloudSynced(local,remote?.updated_at);
+  }
+  return true;
+ }catch(e){
+  if(status)status.textContent='Cloud sync failed';
+  console.error('House & Cart sync error:',e);
+  if(mode==='both')alert('Cloud sync could not complete: '+(e.message||e));
+  return false;
+ }finally{
+  syncBusy=false;
+  if(lastCloudPayload&&stableJson(cloudPayload())!==lastCloudPayload&&navigator.onLine){if(status)status.textContent='Cloud sync pending';scheduleCloudSync()}
+  refreshCloudStatus();
+ }
+}
+function applyCloudPayload(p){if(!p||!Array.isArray(p.meals)||!Array.isArray(p.ingredients))throw Error('Cloud data format is invalid');const restored={...fresh(),...p};localStorage.setItem(KEY,JSON.stringify(restored));db=restored;lastCloudPayload=stableJson(cloudPayload());render()}
+async function openCloudAccount(){if(!sb){alert('Cloud service is unavailable.');return}const {data:{session},error}=await sb.auth.getSession();if(error){alert(error.message);return}if(session){cloudUser=session.user;showModal('House & Cart account',`<p class="sub">Signed in as <b>${esc(cloudUser.email||'')}</b></p><p class="smalltext">Your data is stored in your private House & Cart cloud account.</p><p class="smalltext"><b>Last successful sync:</b> ${esc(lastSyncText())}</p><div class="row"><button class="btn green" id="syncNowBtn">Sync now</button><button class="btn danger" id="signoutBtn">Sign out</button></div>`);document.getElementById('syncNowBtn').onclick=async()=>{closeModal();await syncNow('both')};document.getElementById('signoutBtn').onclick=async()=>{await sb.auth.signOut();cloudUser=null;lastCloudPayload=null;if(cloudChannel)await sb.removeChannel(cloudChannel);cloudChannel=null;closeModal();let el=document.getElementById('saveState');if(el)el.textContent='Saved on this device'};return}showModal('Sign in to Meal Cart',`<p class="sub">Enter your email and we’ll send a secure sign-in link.</p><form id="cloudLogin"><div class="field"><label>Email address</label><input name="email" type="email" required placeholder="you@example.com"></div><button class="btn green">Send sign-in link</button></form>`);document.getElementById('cloudLogin').onsubmit=async e=>{e.preventDefault();const email=new FormData(e.target).get('email');const {error}=await sb.auth.signInWithOtp({email,options:{emailRedirectTo:location.href}});if(error)alert(error.message);else{closeModal();alert('Sign-in link sent. Open it in this same browser, then return to Meal Cart.')}}}
 async function initializeCloud(){if(!sb)return;const {data:{session}}=await sb.auth.getSession();if(session){cloudUser=session.user;await syncNow('both');startRealtime()}sb.auth.onAuthStateChange(async(_event,session)=>{if(session){cloudUser=session.user;await syncNow('both');startRealtime()}else{cloudUser=null;lastCloudPayload=null;if(cloudChannel)await sb.removeChannel(cloudChannel);cloudChannel=null;refreshCloudStatus()}})}
-async function startRealtime(){if(!cloudUser||!sb)return;if(cloudChannel)await sb.removeChannel(cloudChannel);cloudChannel=sb.channel('mealcart-sync-'+cloudUser.id).on('postgres_changes',{event:'*',schema:'public',table:'mealcart_sync_state',filter:'owner_id=eq.'+cloudUser.id},payload=>{const remote=payload.new?.payload;if(!remote||syncBusy)return;if(JSON.stringify(cloudPayload())===lastCloudPayload)applyCloudPayload(remote);else{let el=document.getElementById('saveState');if(el)el.textContent='Cloud changed · sync to resolve'}}).subscribe()}
+async function startRealtime(){if(!cloudUser||!sb)return;if(cloudChannel)await sb.removeChannel(cloudChannel);cloudChannel=sb.channel('mealcart-sync-'+cloudUser.id).on('postgres_changes',{event:'*',schema:'public',table:'mealcart_sync_state',filter:'owner_id=eq.'+cloudUser.id},payload=>{const remote=payload.new?.payload;if(!remote||syncBusy)return;if(stableJson(cloudPayload())===lastCloudPayload){if(stableJson(remote)!==lastCloudPayload){try{if(!snapshotForRecovery('Before realtime cloud update'))throw Error('Recovery snapshot unavailable');applyCloudPayload(remote);markCloudSynced(remote,payload.new?.updated_at)}catch(e){console.error(e);let el=document.getElementById('saveState');if(el)el.textContent='Cloud changed · sync to resolve'}}}else{let el=document.getElementById('saveState');if(el)el.textContent='Cloud changed · sync to resolve'}}).subscribe()}
 window.addEventListener('online',()=>{if(cloudUser)syncNow('both')});
 
 function refreshCloudStatus(){
@@ -196,9 +280,9 @@ function refreshCloudStatus(){
  else if(syncBusy||/Syncing/i.test(source)){state='syncing';message='Syncing with cloud…';hint='Please wait'}
  else if(/Cloud synced/i.test(source)){state='synced';message='✓ Cloud synced';hint='Connected as '+(cloudUser.email||'your account')}
  else if(/setup needed|error|failed/i.test(source)){state='error';message='Cloud sync failed';hint='Tap Retry sync to try again'}
- else if(/pending|changed/i.test(source)){state='pending';message='Cloud sync pending';hint='Local changes are waiting to sync'}
+ else if(/pending|changed|paused/i.test(source)){state='pending';message='Cloud sync pending';hint='Local changes are waiting to sync'}
  else{state='pending';message='Cloud connected';hint='Tap Sync now to verify the latest changes'}
- bar.dataset.state=state;label.textContent=message;
+ bar.dataset.state=state;label.textContent=message;bar.title='Cloud status: '+message+'. Last successful sync: '+lastSyncText();
 }
 function cloudSyncAction(){if(cloudUser)syncNow('both');else openCloudAccount()}
 window.addEventListener('offline',refreshCloudStatus);
@@ -435,8 +519,8 @@ function enhanceSelects(root){root.querySelectorAll('select:not([hidden])').forE
 function showModal(title,body){document.getElementById('modtitle').textContent=title;document.getElementById('modbody').innerHTML=body;document.getElementById('modalback').classList.add('show');enhanceSelects(document.getElementById('modbody'))}
 function closeModal(){document.getElementById('modalback').classList.remove('show')}
 function go(v){view=v;render()}
-function exportData(){let blob=new Blob([JSON.stringify(db,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='meal-cart-backup.json';a.click();URL.revokeObjectURL(a.href)}
-document.getElementById('importFile').onchange=async e=>{let f=e.target.files[0];if(!f)return;try{let x=JSON.parse(await f.text());if(!Array.isArray(x.meals)||!Array.isArray(x.ingredients))throw Error('Not a Meal Cart backup');if(!confirm('Replace this device data with the imported backup?'))return;db={...fresh(),...x};save();render();alert('Backup imported.')}catch(err){alert(err.message)}e.target.value=''};
+function exportData(){let blob=new Blob([JSON.stringify(db,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='house-and-cart-backup-'+new Date().toISOString().slice(0,10)+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);localStorage.setItem(BACKUP_AT_KEY,new Date().toISOString());updateBackupNotice()}
+document.getElementById('importFile').onchange=async e=>{let f=e.target.files[0];if(!f)return;try{let x=JSON.parse(await f.text());if(!Array.isArray(x.meals)||!Array.isArray(x.ingredients))throw Error('Not a Meal Cart backup');if(!confirm('Replace this device data with the imported backup?'))return;if(!snapshotForRecovery('Before manual backup import')){alert('A recovery snapshot could not be saved. Please download your current backup first.');return}const restored={...fresh(),...x};localStorage.setItem(KEY,JSON.stringify(restored));db=restored;save();render();alert('Backup imported.')}catch(err){alert(err.message)}e.target.value=''};
 document.getElementById('nav').onclick=e=>{let b=e.target.closest('button[data-view]');if(b)go(b.dataset.view)};
 document.getElementById('modalback').addEventListener('click',e=>{if(e.target.id==='modalback')closeModal()});
 autoRestock();autoAddOutOfStockSpices();render();save();initializeCloud();
