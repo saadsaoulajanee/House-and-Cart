@@ -279,6 +279,7 @@ try {
  assert.equal(await page.locator('#mobileNav button').count(),6,'Home Care has Home, Essentials, Cupboard, Restock, Budget and History');
  await page.locator('#mobileNav button[data-mobile-view="meals"]').click();
  await page.getByRole('button',{name:/Manage categories/}).first().click();
+ console.log('CARE CATEGORY DIALOG',{title:await page.locator('#modtitle').innerText(),body:(await page.locator('#modbody').innerText()).slice(0,250),errors:errors.slice(-6)});
  await page.locator('#newCareCat').fill('Pet Care');
  await page.locator('#careCatCreateForm button[type="submit"]').click();
  assert.equal(await page.locator('.care-cat-edit-row[data-category="Pet Care"]').count(),1);
