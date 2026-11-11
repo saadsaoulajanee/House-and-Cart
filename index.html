@@ -566,10 +566,28 @@ body{
  #inventoryList>.listline>.pantry-row-actions{grid-column:2;justify-content:flex-end}
  .pantry-current-quantity{min-width:72px}
 }
+
+/* v3.9.1 Searchable manual Kitchen shopping and Home Care steppers */
+.manual-shopping-quantity-row{margin-top:4px}
+.manual-shopping-quantity-row .field{min-width:0}
+.manual-shopping-preview{font-size:12px;line-height:1.5;border:1px solid #e4e8e3;background:#f5f8f5;color:#476458;border-radius:11px;padding:10px 12px;margin:12px 0 18px}
+#manualForm .search-picker{min-width:0}
+#manualForm .unit-control{min-width:0}
+#manualForm .unit-control .styled-select-trigger{min-height:43px}
+.care-supply-stepper{display:inline-flex;flex:0 0 auto}
+.supply-row .supply-actions{flex-wrap:wrap;align-items:center;justify-content:flex-end}
+.supply-row .care-supply-stepper .pantry-current-quantity{min-width:64px}
+.supply-row .care-supply-stepper button{width:33px;min-height:36px;height:36px}
+@media(max-width:600px){
+ .supply-row .supply-actions{justify-content:flex-start;gap:7px}
+ .supply-row .supply-actions .care-supply-stepper{order:1}
+ .supply-row .supply-actions .badge{order:0}
+ .supply-row .supply-actions>.btn{order:2}
+}
 </style>
 </head>
 <body><div class="app">
-<header class="top"><div class="brand"><img class="logo brand-logo" src="./icon-192.png?v=3.7.1" width="48" height="48" alt="House & Cart icon"><div class="brand-copy"><div class="brand-name-row"><span style="font-family:Georgia,serif;font-size:27px;font-weight:500;letter-spacing:-1px">House &amp; Cart</span><span class="version-tag" id="appVersion" title="House & Cart app version">v3.9.0</span></div><div class="smalltext" style="letter-spacing:2px;text-transform:uppercase;font-size:9px">Your everyday home companion</div></div></div><div class="top-actions"><span class="pill" id="saveState">Saved on this device</span><button class="btn soft small" onclick="exportData()">Export backup</button><button class="btn ghost small" onclick="document.getElementById('importFile').click()">Import</button><button class="btn green small" onclick="openCloudAccount()">Account & sync</button><input id="importFile" type="file" accept=".json,application/json" hidden></div><button class="mobile-menu-button" type="button" aria-label="Open app menu" onclick="openMoreMenu()">☰ <span>Menu</span></button></header>
+<header class="top"><div class="brand"><img class="logo brand-logo" src="./icon-192.png?v=3.7.1" width="48" height="48" alt="House & Cart icon"><div class="brand-copy"><div class="brand-name-row"><span style="font-family:Georgia,serif;font-size:27px;font-weight:500;letter-spacing:-1px">House &amp; Cart</span><span class="version-tag" id="appVersion" title="House & Cart app version">v3.9.1</span></div><div class="smalltext" style="letter-spacing:2px;text-transform:uppercase;font-size:9px">Your everyday home companion</div></div></div><div class="top-actions"><span class="pill" id="saveState">Saved on this device</span><button class="btn soft small" onclick="exportData()">Export backup</button><button class="btn ghost small" onclick="document.getElementById('importFile').click()">Import</button><button class="btn green small" onclick="openCloudAccount()">Account & sync</button><input id="importFile" type="file" accept=".json,application/json" hidden></div><button class="mobile-menu-button" type="button" aria-label="Open app menu" onclick="openMoreMenu()">☰ <span>Menu</span></button></header>
 <div class="row mode-row" style="justify-content:space-between;align-items:center;margin:8px 0 4px"><div class="tabs" style="margin:0"><button id="modeKitchen" class="active" onclick="setMode('kitchen')">🍋 Kitchen</button><button id="modeCare" onclick="setMode('care')">🧺 Home care</button></div><div class="cloud-status-bar" id="cloudStatusBar" data-state="local" role="status" aria-live="polite"><span class="cloud-status-dot" aria-hidden="true"></span><strong id="cloudStatusLabel">Saved on this device</strong></div><span class="smalltext" id="modeCaption">Recipes, ingredients & weekly rituals</span></div><nav class="nav" id="nav" aria-label="Main navigation"><button data-view="home" class="active">⌂ Overview</button><button data-view="meals">♡ Recipes</button><button data-view="plan">▦ Planner</button><button data-view="shop">🛒 Shopping</button><button data-view="kitchen">🥬 Pantry</button><button data-view="history">↗ History</button><button data-view="cookable" style="display:none">✨ What can I cook?</button><button data-view="budget" style="display:none">◉ Budget</button></nav>
 <main id="main" tabindex="-1"></main></div><nav id="mobileNav" class="mobile-bottom-nav" aria-label="Mobile navigation"></nav>
 <div class="modalback" id="modalback"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="modtitle" tabindex="-1"><div class="modalhead"><h2 id="modtitle">Edit</h2><button class="x" type="button" aria-label="Close dialog" onclick="closeModal()">✕</button></div><div id="modbody"></div></div></div>
@@ -943,7 +961,7 @@ function unitInfo(unit){
  return {family:'other:'+u,factor:1,canonical:String(unit||'unit')};
 }
 const MEAL_SLOTS=['Breakfast','Brunch','Lunch','Apéro','Goûter','Dinner','Snack','Late-night snack'];
-const UNIT_OPTIONS=[['g','g · grams'],['kg','kg · kilograms'],['mg','mg · milligrams'],['oz','oz · ounces'],['lb','lb · pounds'],['ml','mL · millilitres'],['cl','cL · centilitres'],['dl','dL · decilitres'],['l','L · litres'],['piece','piece(s)'],['slice','slice(s)'],['clove','clove(s)'],['head','head(s)'],['loaf','loaf / loaves'],['jar','jar(s)'],['bag','bag(s)'],['tsp','tsp · teaspoon(s)'],['tbsp','tbsp · tablespoon(s)'],['cup','cup(s) · 250 mL'],['pinch','pinch(es)'],['can','can(s)'],['pack','pack(s)'],['bottle','bottle(s)'],['bunch','bunch(es)'],['other','Other · custom unit']];
+const UNIT_OPTIONS=[['g','g · grams'],['kg','kg · kilograms'],['mg','mg · milligrams'],['oz','oz · ounces'],['lb','lb · pounds'],['ml','mL · millilitres'],['cl','cL · centilitres'],['dl','dL · decilitres'],['l','L · litres'],['piece','piece(s)'],['slice','slice(s)'],['clove','clove(s)'],['head','head(s)'],['loaf','loaf / loaves'],['jar','jar(s)'],['bag','bag(s)'],['tsp','tsp · teaspoon(s)'],['tbsp','tbsp · tablespoon(s)'],['cup','cup(s) · 250 mL'],['pinch','pinch(es)'],['can','can(s)'],['pack','pack(s)'],['bottle','bottle(s)'],['jar','jar(s)'],['bunch','bunch(es)'],['other','Other · custom unit']];
 function unitSelect(name,unit='',cls=''){let known=UNIT_OPTIONS.some(x=>x[0]===unit&&unit!=='other');return '<div class="unit-control"><select name="'+name+'" class="'+cls+'" aria-label="Unit of measure" onchange="toggleCustomUnit(this)">'+UNIT_OPTIONS.map(([value,label])=>'<option value="'+value+'" '+((known?unit===value:value==='other')?'selected':'')+'>'+label+'</option>').join('')+'</select><input class="custom-unit" aria-label="Custom unit" placeholder="Enter your unit" value="'+esc(known?'':unit)+'" style="'+(known?'display:none':'')+'"></div>'}
 function toggleCustomUnit(select){const input=select.closest('.unit-control')?.querySelector('.custom-unit');if(input){input.style.display=select.value==='other'?'':'none';input.required=select.value==='other'}}
 function selectedUnit(select){if(!select)return 'piece';return select.value==='other'?(select.closest('.unit-control')?.querySelector('.custom-unit')?.value.trim()||''):select.value}
@@ -1366,7 +1384,72 @@ function shopView(){let groups=CATS.map(c=>({c,items:db.shopping.filter(x=>(x.ca
 function toggleShop(id,v){let x=db.shopping.find(a=>a.id===id);if(x)x.checked=v;if(x?.source==='spice-auto'&&v){alert('Great! Once you put this spice in your pantry, change its status to “Good” and Maison will remove it from the restock list.')}save();render()}
 function setShopPrice(id,v){let x=db.shopping.find(a=>a.id===id);if(x)x.price=+v||0;save()}
 function removeShop(id){db.shopping=db.shopping.filter(x=>x.id!==id);save();render()}
-function addManualItem(){showModal('Add a shopping item',`<form id="manualForm"><div class="field"><label>Item name</label><input name="name" required placeholder="e.g. Dish soap"></div><div class="two"><div class="field"><label>Category</label><select name="cat">${CATS.map(c=>`<option>${c}</option>`).join('')}</select></div><div class="field"><label>Quantity</label><input name="qty" placeholder="Optional"></div></div><button class="btn green">Add to list</button></form>`);document.getElementById('manualForm').onsubmit=e=>{e.preventDefault();let f=e.target;db.shopping.push({id:uid(),name:f.name.value.trim(),category:f.cat.value,qty:0,unit:f.qty.value,checked:false,source:'manual',price:0});save();closeModal();render()}}
+
+/* Hand-added Kitchen shopping items use the same searchable ingredient
+   library as recipes and pantry. Default units follow the ingredient
+   or its existing stock, but remain editable. */
+function manualShoppingDefaultUnit(ingredient){
+ if(!ingredient)return 'piece';
+ const stocked=db.inventory.find(row=>row.ingredientId===ingredient.id&&!row.isSpice&&row.unit);
+ return stocked?.unit||ingredient.unit||(isSpice(ingredient)?'jar':'piece');
+}
+function updateManualShoppingIngredient(){
+ const form=document.getElementById('manualForm');
+ if(!form)return;
+ const ingredient=ingById(form.elements.ingredient.value);
+ const hint=document.getElementById('manualShoppingIngredientHint');
+ const holder=document.getElementById('manualShoppingUnitHolder');
+ if(!ingredient){
+  hint.textContent='Search your ingredient library and select a suggested ingredient.';
+  document.getElementById('manualShoppingPreview').textContent='Choose an ingredient to see its default unit and pantry stock.';
+  return;
+ }
+ const unit=manualShoppingDefaultUnit(ingredient);
+ holder.innerHTML=unitSelect('unit',unit,'manual-shopping-unit');
+ enhanceSelects(holder);
+ const category=ingredient.category||'Other';
+ hint.textContent=category+' · Suggested unit: '+unit+(isSpice(ingredient)?' · Spice restock':'');
+ form.elements.qty.placeholder=unit==='g'||unit==='ml'?'e.g. 500':'e.g. 1';
+ updateManualShoppingPreview();
+}
+function updateManualShoppingPreview(){
+ const form=document.getElementById('manualForm'),preview=document.getElementById('manualShoppingPreview');
+ if(!form||!preview)return;
+ const ing=ingById(form.elements.ingredient.value),unit=selectedUnit(form.elements.unit);
+ const raw=form.elements.qty.value,qty=Number(raw);
+ if(!ing){preview.textContent='Choose an ingredient from your library first.';return}
+ if(!unit){preview.textContent='Choose a unit of measurement.';return}
+ if(!raw||!Number.isFinite(qty)||qty<=0){preview.textContent='Enter how much '+ing.name+' you want to buy.';return}
+ const stocked=db.inventory.filter(row=>row.ingredientId===ing.id&&!row.isSpice);
+ const compatible=stocked.filter(row=>convertQty(1,row.unit,unit)!==null);
+ const stock=compatible.reduce((total,row)=>total+convertQty(Number(row.qty)||0,row.unit,unit),0);
+ preview.textContent='Add '+formatQuantity(qty,unit)+' '+ing.name+' to the shopping list.'+(compatible.length?' Currently in pantry: '+formatQuantity(stock,unit)+'.':'');
+}
+function addManualItem(){
+ const sorted=db.ingredients.slice().sort((a,b)=>a.name.localeCompare(b.name));
+ const body='<form id="manualForm">'+
+  '<div class="field"><label>Find an ingredient</label>'+pickerMarkup('ingredient','Search your ingredient library…',sorted,'','manual-shop-ingredient')+
+  '<p class="smalltext" id="manualShoppingIngredientHint">Choose a product from the ingredient library. The category and unit will be filled in automatically.</p></div>'+
+  '<div class="two manual-shopping-quantity-row"><div class="field"><label for="manualShoppingQty">Quantity to buy</label><input id="manualShoppingQty" name="qty" type="number" required min="0.000001" step="any" placeholder="e.g. 500"></div>'+
+  '<div class="field"><label>Unit of measurement</label><div id="manualShoppingUnitHolder">'+unitSelect('unit','piece','manual-shopping-unit')+'</div></div></div>'+
+  '<p class="manual-shopping-preview" id="manualShoppingPreview" role="status" aria-live="polite">Choose an ingredient to see its suggested unit.</p>'+
+  '<div class="row"><button type="submit" class="btn green">＋ Add to shopping list</button></div></form>';
+ showModal('Add ingredient to shopping list',body);
+ const form=document.getElementById('manualForm');
+ form.querySelector('.search-picker select').addEventListener('change',updateManualShoppingIngredient);
+ form.addEventListener('input',e=>{if(e.target.name==='qty'||e.target.classList.contains('custom-unit'))updateManualShoppingPreview()});
+ form.addEventListener('change',e=>{if(e.target.name==='unit')updateManualShoppingPreview()});
+ form.onsubmit=e=>{
+  e.preventDefault();
+  const ing=ingById(form.elements.ingredient.value),value=form.elements.qty.value,qty=Number(value);
+  const unit=selectedUnit(form.elements.unit);
+  if(!ing){alert('Choose an ingredient from the suggestions.');return}
+  if(!value||!Number.isFinite(qty)||qty<=0){alert('Enter a quantity greater than zero.');return}
+  if(!unit){alert('Choose a unit or enter a custom unit.');return}
+  db.shopping.push({id:uid(),ingredientId:ing.id,name:ing.name,category:ing.category||'Other',qty,unit,checked:false,source:'manual',price:0});
+  save();closeModal();render();
+ };
+}
 function addExtraPurchaseRow(){
  let host=document.getElementById('extraPurchases');if(!host)return;
  let id=uid(),opts=db.ingredients.slice().sort((a,b)=>a.name.localeCompare(b.name)).map(ing=>`<option value="${ing.id}">${esc(ing.name)}</option>`).join('');
@@ -1902,12 +1985,36 @@ function openEssentialEditor(id=''){
 </script>
 <script>
 
+
+/* Quick Home Care stock adjustments also update automatic Restock thresholds. */
+function adjustCareSupplyQuantity(id,direction){
+ const item=db.cleaningInventory.find(x=>x.id===id);
+ if(!item||Math.abs(Number(direction))!==1)return false;
+ const before=Math.max(0,Number(item.qty)||0),step=pantryQuantityStep(item.unit);
+ const next=Math.max(0,Number((before+Math.sign(direction)*step).toFixed(6)));
+ if(before===next)return false;
+ item.qty=next;
+ autoRestock();
+ save();
+ const current=document.querySelector('#careSupplyList .supply-row[data-supply-id="'+id+'"]');
+ if(current)current.outerHTML=cleanInventoryRow(item);
+ return true;
+}
 function cleanInventoryRow(x){
- const cats=careCategoryBadges(x);
- return '<div class="listline supply-row"><span class="supply-emoji">'+cleanEmoji(x.name)+'</span><div class="supply-info"><b>'+esc(x.name)+'</b><small>'+x.qty+' '+esc(x.unit)+' · restock at '+x.threshold+'</small><div class="care-item-tags">'+cats+'</div></div><div class="supply-actions"><span class="badge '+(x.qty<=x.threshold?'orange':'gray')+'">'+(x.qty<=x.threshold?'Low':'In stock')+'</span><button class="btn soft small" onclick="openCleanProduct(\''+x.id+'\')">Update</button></div></div>';
+ const cats=careCategoryBadges(x),step=pantryQuantityStep(x.unit);
+ const amount=esc(formatQuantity(Number(x.qty)||0,x.unit)),increment=esc(formatQuantity(step,x.unit));
+ return '<div class="listline supply-row" data-supply-id="'+esc(x.id)+'">'+
+  '<span class="supply-emoji">'+cleanEmoji(x.name)+'</span>'+
+  '<div class="supply-info"><b>'+esc(x.name)+'</b><small>'+amount+' · restock at '+esc(String(x.threshold))+'</small><div class="care-item-tags">'+cats+'</div></div>'+
+  '<div class="supply-actions"><span class="badge '+(x.qty<=x.threshold?'orange':'gray')+'">'+(x.qty<=x.threshold?'Low':'In stock')+'</span>'+
+  '<div class="pantry-quantity-controls care-supply-stepper" role="group" aria-label="Adjust '+esc(x.name)+' stock">'+
+   '<button type="button" aria-label="Decrease '+esc(x.name)+' by '+increment+'" title="Subtract '+increment+'" onclick="adjustCareSupplyQuantity(\''+x.id+'\',-1)" '+(Number(x.qty)<=0?'disabled':'')+'>−</button>'+
+   '<span class="pantry-current-quantity" aria-live="polite">'+amount+'</span>'+
+   '<button type="button" aria-label="Increase '+esc(x.name)+' by '+increment+'" title="Add '+increment+'" onclick="adjustCareSupplyQuantity(\''+x.id+'\',1)">＋</button></div>'+
+  '<button class="btn soft small" onclick="openCleanProduct(\''+x.id+'\')">Update</button></div></div>';
 }
 function cleanInventoryView(){
- return '<div class="hero"><div><div class="eyebrow">Home Care stock</div><h1>Supply cupboard</h1><p class="sub">Organise each product in multiple categories and keep accurate stock levels.</p></div><div class="row"><button class="btn soft" onclick="openCareCategoryManager()">⚙ Categories</button><button class="btn green" onclick="openCleanProduct()">＋ Add product</button></div></div><div class="card"><div class="sectionhead"><h2>Your products</h2><span class="badge">'+db.cleaningInventory.length+' tracked</span></div>'+(db.cleaningInventory.map(cleanInventoryRow).join('')||'<div class="empty">No products tracked yet. Add one above.</div>')+'</div>';
+ return '<div class="hero"><div><div class="eyebrow">Home Care stock</div><h1>Supply cupboard</h1><p class="sub">Organise each product in multiple categories and keep accurate stock levels.</p></div><div class="row"><button class="btn soft" onclick="openCareCategoryManager()">⚙ Categories</button><button class="btn green" onclick="openCleanProduct()">＋ Add product</button></div></div><div class="card"><div class="sectionhead"><h2>Your products</h2><span class="badge">'+db.cleaningInventory.length+' tracked</span></div><div id="careSupplyList">'+(db.cleaningInventory.map(cleanInventoryRow).join('')||'<div class="empty">No products tracked yet. Add one above.</div>')+'</div></div>';
 }
 function trackEssential(id){
  const essential=db.cleaningEssentials.find(x=>x.id===id);if(!essential)return;
