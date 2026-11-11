@@ -443,7 +443,7 @@ body{
 </style>
 </head>
 <body><div class="app">
-<header class="top"><div class="brand"><img class="logo brand-logo" src="./icon-192.png?v=3.7.1" width="48" height="48" alt="House & Cart icon"><div class="brand-copy"><div class="brand-name-row"><span style="font-family:Georgia,serif;font-size:27px;font-weight:500;letter-spacing:-1px">House &amp; Cart</span><span class="version-tag" id="appVersion" title="House & Cart app version">v3.7.1</span></div><div class="smalltext" style="letter-spacing:2px;text-transform:uppercase;font-size:9px">Your everyday home companion</div></div></div><div class="top-actions"><span class="pill" id="saveState">Saved on this device</span><button class="btn soft small" onclick="exportData()">Export backup</button><button class="btn ghost small" onclick="document.getElementById('importFile').click()">Import</button><button class="btn green small" onclick="openCloudAccount()">Account & sync</button><input id="importFile" type="file" accept=".json,application/json" hidden></div><button class="mobile-menu-button" type="button" aria-label="Open app menu" onclick="openMoreMenu()">☰ <span>Menu</span></button></header>
+<header class="top"><div class="brand"><img class="logo brand-logo" src="./icon-192.png?v=3.7.1" width="48" height="48" alt="House & Cart icon"><div class="brand-copy"><div class="brand-name-row"><span style="font-family:Georgia,serif;font-size:27px;font-weight:500;letter-spacing:-1px">House &amp; Cart</span><span class="version-tag" id="appVersion" title="House & Cart app version">v3.8.0</span></div><div class="smalltext" style="letter-spacing:2px;text-transform:uppercase;font-size:9px">Your everyday home companion</div></div></div><div class="top-actions"><span class="pill" id="saveState">Saved on this device</span><button class="btn soft small" onclick="exportData()">Export backup</button><button class="btn ghost small" onclick="document.getElementById('importFile').click()">Import</button><button class="btn green small" onclick="openCloudAccount()">Account & sync</button><input id="importFile" type="file" accept=".json,application/json" hidden></div><button class="mobile-menu-button" type="button" aria-label="Open app menu" onclick="openMoreMenu()">☰ <span>Menu</span></button></header>
 <div class="row mode-row" style="justify-content:space-between;align-items:center;margin:8px 0 4px"><div class="tabs" style="margin:0"><button id="modeKitchen" class="active" onclick="setMode('kitchen')">🍋 Kitchen</button><button id="modeCare" onclick="setMode('care')">🧺 Home care</button></div><div class="cloud-status-bar" id="cloudStatusBar" data-state="local" role="status" aria-live="polite"><span class="cloud-status-dot" aria-hidden="true"></span><strong id="cloudStatusLabel">Saved on this device</strong></div><span class="smalltext" id="modeCaption">Recipes, ingredients & weekly rituals</span></div><nav class="nav" id="nav" aria-label="Main navigation"><button data-view="home" class="active">⌂ Overview</button><button data-view="meals">♡ Recipes</button><button data-view="plan">▦ Planner</button><button data-view="shop">🛒 Shopping</button><button data-view="kitchen">🥬 Pantry</button><button data-view="history">↗ History</button><button data-view="cookable" style="display:none">✨ What can I cook?</button><button data-view="budget" style="display:none">◉ Budget</button></nav>
 <main id="main" tabindex="-1"></main></div><nav id="mobileNav" class="mobile-bottom-nav" aria-label="Mobile navigation"></nav>
 <div class="modalback" id="modalback"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="modtitle" tabindex="-1"><div class="modalhead"><h2 id="modtitle">Edit</h2><button class="x" type="button" aria-label="Close dialog" onclick="closeModal()">✕</button></div><div id="modbody"></div></div></div>
@@ -461,9 +461,39 @@ const DEFAULT_ING=[
 ];
 const uid=()=>Math.random().toString(36).slice(2,10);
 const CLEAN_ESSENTIALS=[['Dishwashing liquid','Kitchen cleaning','🫧'],['Dishwasher tablets','Kitchen cleaning','🍽️'],['All-purpose cleaner','Surfaces','🧴'],['Bathroom cleaner','Bathroom','🚿'],['Toilet cleaner','Bathroom','🚽'],['Glass cleaner','Surfaces','🪟'],['Floor cleaner','Floors','🧹'],['Laundry detergent','Laundry','🧺'],['Fabric softener','Laundry','👕'],['Bleach / disinfectant','Disinfection','🧼'],['Sponges','Tools & accessories','🧽'],['Microfibre cloths','Tools & accessories','🧻'],['Bin bags','Waste','🗑️'],['Rubber gloves','Tools & accessories','🧤'],['Paper towels','Paper goods','🧻']];
-const fresh=()=>({meals:[],cleaningInventory:[],cleaningShopping:[],cleaningEssentials:CLEAN_ESSENTIALS.map(x=>({id:uid(),name:x[0],category:x[1],emoji:x[2],qty:1,threshold:1,unit:'pack',essential:true})),ingredients:DEFAULT_ING.map(x=>({id:uid(),name:x[0],category:x[1],unit:x[2],aliases:x[3],isSpice:!!x[4],custom:false})),inventory:[],plan:{},shopping:[],history:[],settings:{currency:'EUR',store:'',budget:80}});
+const fresh=()=>({meals:[],cleaningInventory:[],cleaningShopping:[],cleaningHistory:[],cleaningEssentials:CLEAN_ESSENTIALS.map(x=>({id:uid(),name:x[0],category:x[1],categories:[x[1]],emoji:x[2],qty:1,threshold:1,unit:'pack',essential:true})),ingredients:DEFAULT_ING.map(x=>({id:uid(),name:x[0],category:x[1],unit:x[2],aliases:x[3],isSpice:!!x[4],custom:false})),inventory:[],plan:{},shopping:[],history:[],settings:{currency:'EUR',store:'',budget:80,careBudget:100,careMonthlyBudgets:{},careCategories:[...new Set(CLEAN_ESSENTIALS.map(x=>x[1]))]}});
 let db;try{db=JSON.parse(localStorage.getItem(KEY))||fresh()}catch(e){db=fresh()}
-db={...fresh(),...db,cleaningInventory:db.cleaningInventory||[],cleaningShopping:db.cleaningShopping||[],cleaningEssentials:db.cleaningEssentials||fresh().cleaningEssentials,settings:{...fresh().settings,...(db.settings||{})}};
+db={...fresh(),...db,cleaningInventory:db.cleaningInventory||[],cleaningShopping:db.cleaningShopping||[],cleaningHistory:db.cleaningHistory||[],cleaningEssentials:db.cleaningEssentials||fresh().cleaningEssentials,settings:{...fresh().settings,...(db.settings||{})}};
+
+/* Home Care data migration: legacy single-category records remain readable.
+   The canonical category collection lives inside settings and syncs with existing Supabase payloads. */
+const CARE_RESTOCK_EXPIRE_MS=2*60*60*1000;
+function categoriesOf(item){
+ const arr=Array.isArray(item?.categories)?item.categories:(item?.category?[item.category]:[]);
+ return [...new Map(arr.filter(x=>typeof x==='string'&&x.trim()).map(x=>[norm(x),x.trim()])).values()];
+}
+function syncCareCategoryFields(item,names){
+ item.categories=[...new Set((names||[]).filter(Boolean))];item.category=item.categories[0]||'Other';return item;
+}
+function migrateCareData(){
+ db.cleaningHistory??=[];
+ db.settings??={};
+ if(!Array.isArray(db.settings.careCategories))db.settings.careCategories=[...new Set(CLEAN_ESSENTIALS.map(x=>x[1]))];
+ for(const row of [...(db.cleaningEssentials||[]),...(db.cleaningInventory||[]),...(db.cleaningShopping||[])])
+  if(!Array.isArray(row.categories))row.categories=categoriesOf(row);
+ for(const x of db.cleaningShopping||[]){
+  if(x.checked&&!Number.isFinite(Date.parse(x.checkedAt||'')))x.checkedAt=new Date().toISOString();
+  if(!x.checked)delete x.checkedAt;
+ }
+ for(const row of [...(db.cleaningEssentials||[]),...(db.cleaningInventory||[]),...(db.cleaningShopping||[])])
+  for(const cat of categoriesOf(row))
+   if(!db.settings.careCategories.some(x=>norm(x)===norm(cat)))db.settings.careCategories.push(cat);
+ db.settings.careMonthlyBudgets??={};
+ if(!Number.isFinite(Number(db.settings.careBudget)))db.settings.careBudget=100;
+ return db;
+}
+
+migrateCareData();
 for(const x of db.ingredients){if(x.category==='Spices')x.isSpice=true}
 for(const d of DEFAULT_ING.filter(x=>x[4]))if(!db.ingredients.some(i=>norm(i.name)===norm(d[0])))db.ingredients.push({id:uid(),name:d[0],category:'Spices',unit:'',aliases:d[3],isSpice:true,custom:false});
 let view='home',mealFilter='All',shopFilter='All',appMode='kitchen';
@@ -479,7 +509,7 @@ function lastSyncText(){let raw=localStorage.getItem(LAST_SYNC_AT_KEY);return ra
 function markCloudSynced(payload,updatedAt){lastCloudPayload=stableJson(payload);cloudRemoteUpdatedAt=updatedAt||new Date().toISOString();localStorage.setItem(LAST_SYNC_AT_KEY,new Date().toISOString());const status=document.getElementById('saveState');if(status)status.textContent='✓ Cloud synced';refreshCloudStatus()}
 
 function save(){localStorage.setItem(KEY,JSON.stringify(db));let s=document.getElementById('saveState');if(s)s.textContent=cloudUser?'Saved locally · cloud sync pending':'Saved on this device';if(cloudUser)scheduleCloudSync()}
-function cloudPayload(){return {meals:db.meals,cleaningInventory:db.cleaningInventory,cleaningShopping:db.cleaningShopping,cleaningEssentials:db.cleaningEssentials,ingredients:db.ingredients,inventory:db.inventory,plan:db.plan,shopping:db.shopping,history:db.history,settings:db.settings}}
+function cloudPayload(){return {meals:db.meals,cleaningInventory:db.cleaningInventory,cleaningShopping:db.cleaningShopping,cleaningHistory:db.cleaningHistory,cleaningEssentials:db.cleaningEssentials,ingredients:db.ingredients,inventory:db.inventory,plan:db.plan,shopping:db.shopping,history:db.history,settings:db.settings}}
 function scheduleCloudSync(){clearTimeout(syncTimer);syncTimer=setTimeout(()=>syncNow('push'),900)}
 
 function chooseCloudConflict(){
@@ -555,7 +585,7 @@ async function syncNow(mode='both'){
   refreshCloudStatus();
  }
 }
-function applyCloudPayload(p){if(!p||!Array.isArray(p.meals)||!Array.isArray(p.ingredients))throw Error('Cloud data format is invalid');const restored={...fresh(),...p};localStorage.setItem(KEY,JSON.stringify(restored));db=restored;lastCloudPayload=stableJson(cloudPayload());render()}
+function applyCloudPayload(p){if(!p||!Array.isArray(p.meals)||!Array.isArray(p.ingredients))throw Error('Cloud data format is invalid');const restored={...fresh(),...p};localStorage.setItem(KEY,JSON.stringify(restored));db=restored;migrateCareData();lastCloudPayload=stableJson(cloudPayload());render()}
 async function openCloudAccount(){if(!sb){alert('Cloud service is unavailable.');return}const {data:{session},error}=await sb.auth.getSession();if(error){alert(error.message);return}if(session){cloudUser=session.user;showModal('House & Cart account',`<p class="sub">Signed in as <b>${esc(cloudUser.email||'')}</b></p><p class="smalltext">Your data is stored in your private House & Cart cloud account.</p><p class="smalltext"><b>Last successful sync:</b> ${esc(lastSyncText())}</p><div class="row"><button class="btn green" id="syncNowBtn">Sync now</button><button class="btn danger" id="signoutBtn">Sign out</button></div>`);document.getElementById('syncNowBtn').onclick=async()=>{closeModal();await syncNow('both')};document.getElementById('signoutBtn').onclick=async()=>{await sb.auth.signOut();cloudUser=null;lastCloudPayload=null;if(cloudChannel)await sb.removeChannel(cloudChannel);cloudChannel=null;closeModal();let el=document.getElementById('saveState');if(el)el.textContent='Saved on this device'};return}showModal('Sign in to Meal Cart',`<p class="sub">Enter your email and we’ll send a secure sign-in link.</p><form id="cloudLogin"><div class="field"><label>Email address</label><input name="email" type="email" required placeholder="you@example.com"></div><button class="btn green">Send sign-in link</button></form>`);document.getElementById('cloudLogin').onsubmit=async e=>{e.preventDefault();const email=new FormData(e.target).get('email');const {error}=await sb.auth.signInWithOtp({email,options:{emailRedirectTo:location.href}});if(error)alert(error.message);else{closeModal();alert('Sign-in link sent. Open it in this same browser, then return to Meal Cart.')}}}
 async function initializeCloud(){if(!sb)return;const {data:{session}}=await sb.auth.getSession();if(session){cloudUser=session.user;await syncNow('both');startRealtime()}sb.auth.onAuthStateChange(async(_event,session)=>{if(session){cloudUser=session.user;await syncNow('both');startRealtime()}else{cloudUser=null;lastCloudPayload=null;if(cloudChannel)await sb.removeChannel(cloudChannel);cloudChannel=null;refreshCloudStatus()}})}
 async function startRealtime(){if(!cloudUser||!sb)return;if(cloudChannel)await sb.removeChannel(cloudChannel);cloudChannel=sb.channel('mealcart-sync-'+cloudUser.id).on('postgres_changes',{event:'*',schema:'public',table:'mealcart_sync_state',filter:'owner_id=eq.'+cloudUser.id},payload=>{const remote=payload.new?.payload;if(!remote||syncBusy)return;if(stableJson(cloudPayload())===lastCloudPayload){if(stableJson(remote)!==lastCloudPayload){try{if(!snapshotForRecovery('Before realtime cloud update'))throw Error('Recovery snapshot unavailable');applyCloudPayload(remote);markCloudSynced(remote,payload.new?.updated_at)}catch(e){console.error(e);let el=document.getElementById('saveState');if(el)el.textContent='Cloud changed · sync to resolve'}}}else{let el=document.getElementById('saveState');if(el)el.textContent='Cloud changed · sync to resolve'}}).subscribe()}
@@ -1152,7 +1182,7 @@ function showModal(title,body){document.getElementById('modtitle').textContent=t
 function closeModal(){document.getElementById('modalback').classList.remove('show')}
 function go(v){view=v;render()}
 function exportData(){let blob=new Blob([JSON.stringify(db,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='house-and-cart-backup-'+new Date().toISOString().slice(0,10)+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);localStorage.setItem(BACKUP_AT_KEY,new Date().toISOString());updateBackupNotice()}
-document.getElementById('importFile').onchange=async e=>{let f=e.target.files[0];if(!f)return;try{let x=JSON.parse(await f.text());if(!Array.isArray(x.meals)||!Array.isArray(x.ingredients))throw Error('Not a Meal Cart backup');if(!confirm('Replace this device data with the imported backup?'))return;if(!snapshotForRecovery('Before manual backup import')){alert('A recovery snapshot could not be saved. Please download your current backup first.');return}const restored={...fresh(),...x};localStorage.setItem(KEY,JSON.stringify(restored));db=restored;save();render();alert('Backup imported.')}catch(err){alert(err.message)}e.target.value=''};
+document.getElementById('importFile').onchange=async e=>{let f=e.target.files[0];if(!f)return;try{let x=JSON.parse(await f.text());if(!Array.isArray(x.meals)||!Array.isArray(x.ingredients))throw Error('Not a Meal Cart backup');if(!confirm('Replace this device data with the imported backup?'))return;if(!snapshotForRecovery('Before manual backup import')){alert('A recovery snapshot could not be saved. Please download your current backup first.');return}const restored={...fresh(),...x};localStorage.setItem(KEY,JSON.stringify(restored));db=restored;migrateCareData();save();render();alert('Backup imported.')}catch(err){alert(err.message)}e.target.value=''};
 document.getElementById('nav').onclick=e=>{let b=e.target.closest('button[data-view]');if(b)go(b.dataset.view)};
 document.getElementById('modalback').addEventListener('click',e=>{if(e.target.id==='modalback')closeModal()});
 autoRestock();autoAddOutOfStockSpices();render();save();initializeCloud();
