@@ -448,6 +448,18 @@ async function testMockCloudSync(browser,origin){
   assert.equal(await page.evaluate(()=>window.__fakeCloudState.reads),1,'Refresh performs only one initial sync check');
   assert.equal(await page.getByRole('dialog',{name:/Choose which data to keep/}).isVisible(),false,'Refresh with identical data never shows a choice');
 
+
+  // A remote-only change downloads automatically; this is not a two-sided conflict.
+  await page.evaluate(()=>{
+   const state=window.__fakeCloudState;
+   state.row.payload.meals.push({id:'cloud-only',name:'Cloud-only recipe',category:['Dinner'],servings:2,ingredients:[],steps:[]});
+   state.row.updated_at=new Date(Date.now()+1100).toISOString();
+   sessionStorage.setItem('__housecartMockRemote',JSON.stringify(state.row));
+   syncNow('both');
+  });
+  await page.waitForFunction(()=>db.meals.some(x=>x.id==='cloud-only'),{timeout:15000});
+  assert.equal(await page.getByRole('dialog',{name:/Choose which data to keep/}).isVisible(),false,'Remote-only changes download without asking which data to keep');
+
   // A cloud payload written by v3.7 is equivalent to v3.8 after category / history migration.
   // Checked purchase timestamps may exist locally but not in the legacy remote payload.
   await page.evaluate(()=>{
