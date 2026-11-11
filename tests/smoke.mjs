@@ -9,7 +9,7 @@ await page.route('https://cdn.jsdelivr.net/npm/@supabase/**',route=>route.abort(
 try {
  await page.goto(origin,{waitUntil:'domcontentloaded'});
  await page.waitForSelector('#mobileNav button');
- assert.match(await page.locator('#appVersion').innerText(),/v3\.8\.0/);
+ assert.match(await page.locator('#appVersion').innerText(),/v3\.8\.1/);
  assert.match(await page.locator('.brand').innerText(),/House & Cart/);
  // The small version badge sits on the same baseline as the app name.
  assert.equal(await page.locator('.brand-name-row #appVersion').count(),1);
@@ -396,7 +396,7 @@ async function testMockCloudSync(browser,origin){
  page.on('pageerror',e=>faults.push(String(e)));
  await page.route('https://cdn.jsdelivr.net/npm/@supabase/**',route=>route.abort());
  await page.addInitScript(()=>{
-  const state={row:null};
+  const state={row:JSON.parse(sessionStorage.getItem('__housecartMockRemote')||'null'),reads:0,authEvents:0};
   window.__fakeCloudState=state;
   const copy=x=>JSON.parse(JSON.stringify(x));
   const user={id:'00000000-0000-4000-8000-000000000001',email:'qa@example.com'};
@@ -404,7 +404,7 @@ async function testMockCloudSync(browser,origin){
    return {
     auth:{
      getSession:async()=>({data:{session:{user}},error:null}),
-     onAuthStateChange:()=>({data:{subscription:{unsubscribe(){}}}})
+     onAuthStateChange:(callback)=>{queueMicrotask(()=>{state.authEvents++;callback('INITIAL_SESSION',{user})});setTimeout(()=>{state.authEvents++;callback('SIGNED_IN',{user})},10);return {data:{subscription:{unsubscribe(){}}}}}
     },
     from(){
      let operation=null,write=null,filters={};
@@ -414,15 +414,15 @@ async function testMockCloudSync(browser,origin){
       is(k,v){filters[k]=v;return builder},
       update(value){operation='update';write=value;return builder},
       insert(value){operation='insert';write=value;return builder},
-      async maybeSingle(){return {data:state.row?copy(state.row):null,error:null}},
+      async maybeSingle(){state.reads++;return {data:state.row?copy(state.row):null,error:null}},
       then(resolve,reject){
        let result;
        if(operation==='insert'){
         if(state.row)result={data:null,error:{message:'Row already exists'}};
-        else{state.row=copy(write);result={data:[{updated_at:state.row.updated_at}],error:null}}
+        else{state.row=copy(write);sessionStorage.setItem('__housecartMockRemote',JSON.stringify(state.row));result={data:[{updated_at:state.row.updated_at}],error:null}}
        }else if(operation==='update'){
         if(!state.row||state.row.updated_at!==filters.updated_at)result={data:[],error:null};
-        else{state.row=copy({...state.row,...write});result={data:[{updated_at:state.row.updated_at}],error:null}}
+        else{state.row=copy({...state.row,...write});sessionStorage.setItem('__housecartMockRemote',JSON.stringify(state.row));result={data:[{updated_at:state.row.updated_at}],error:null}}
        }else result={data:[],error:null};
        return Promise.resolve(result).then(resolve,reject);
       }
@@ -436,7 +436,51 @@ async function testMockCloudSync(browser,origin){
  });
  try{
   await page.goto(origin,{waitUntil:'domcontentloaded'});
+
   await page.waitForFunction(()=>document.getElementById('cloudStatusLabel')?.textContent.includes('Cloud synced'),{timeout:15000});
+  await page.waitForTimeout(90);
+  assert.equal(await page.evaluate(()=>window.__fakeCloudState.reads),1,'Auth INITIAL_SESSION and SIGNED_IN must not launch duplicate startup sync checks');
+  assert.equal(await page.getByRole('dialog',{name:/Choose which data to keep/}).isVisible(),false,'Identical local/cloud data must not prompt');
+  assert.ok(await page.evaluate(()=>storedSyncFingerprint(cloudUser.id)), 'A sync fingerprint is stored for refreshes');
+  await page.reload({waitUntil:'domcontentloaded'});
+  await page.waitForFunction(()=>document.getElementById('cloudStatusLabel')?.textContent.includes('Cloud synced'),{timeout:15000});
+  await page.waitForTimeout(90);
+  assert.equal(await page.evaluate(()=>window.__fakeCloudState.reads),1,'Refresh performs only one initial sync check');
+  assert.equal(await page.getByRole('dialog',{name:/Choose which data to keep/}).isVisible(),false,'Refresh with identical data never shows a choice');
+
+  // A cloud payload written by v3.7 is equivalent to v3.8 after category / history migration.
+  // Checked purchase timestamps may exist locally but not in the legacy remote payload.
+  await page.evaluate(()=>{
+   db.cleaningShopping.push({id:'legacy-restock-1',name:'Legacy bin bags',category:'Waste',categories:['Waste'],checked:true,checkedAt:new Date().toISOString(),auto:false});
+   localStorage.setItem(KEY,JSON.stringify(db)); // simulate an offline local migration without triggering a push
+   const remote=JSON.parse(JSON.stringify(cloudPayload()));
+   delete remote.cleaningHistory;
+   delete remote.settings.careCategories;
+   delete remote.settings.careBudget;
+   delete remote.settings.careMonthlyBudgets;
+   for(const item of [...remote.cleaningEssentials,...remote.cleaningInventory,...remote.cleaningShopping])delete item.categories;
+   delete remote.cleaningShopping.find(x=>x.id==='legacy-restock-1').checkedAt;
+   window.__fakeCloudState.row.payload=remote;
+   window.__fakeCloudState.row.updated_at=new Date(Date.now()+1000).toISOString();
+   sessionStorage.setItem('__housecartMockRemote',JSON.stringify(window.__fakeCloudState.row));
+  });
+  await page.reload({waitUntil:'domcontentloaded'});
+  await page.waitForFunction(()=>document.getElementById('cloudStatusLabel')?.textContent.includes('Cloud synced'),{timeout:15000});
+  await page.waitForTimeout(110);
+  assert.equal(await page.getByRole('dialog',{name:/Choose which data to keep/}).isVisible(),false,'Legacy category and timestamp fields are not genuine conflicts');
+  assert.equal(await page.evaluate(()=>window.__fakeCloudState.reads),1,'A migrated data refresh checks cloud once');
+
+  // With a persisted baseline, local-only edits must upload without a conflict dialog.
+  await page.evaluate(()=>{
+   db.meals.push({id:'offline-edit',name:'Offline recipe',category:['Dinner'],servings:2,ingredients:[],steps:[]});
+   localStorage.setItem(KEY,JSON.stringify(db));
+  });
+  await page.reload({waitUntil:'domcontentloaded'});
+  await page.waitForFunction(()=>window.__fakeCloudState.row?.payload.meals.some(x=>x.id==='offline-edit'),{timeout:15000});
+  await page.waitForTimeout(100);
+  assert.equal(await page.getByRole('dialog',{name:/Choose which data to keep/}).isVisible(),false,'Local-only changes are uploaded safely without prompting');
+  assert.equal(await page.evaluate(()=>window.__fakeCloudState.reads),1,'An offline-edit refresh checks cloud once');
+
   await page.evaluate(()=>{
    db.meals.push({id:'local1',name:'First synced recipe',category:['Dinner'],servings:2,ingredients:[],steps:[]});
    save();
@@ -454,12 +498,12 @@ async function testMockCloudSync(browser,origin){
   await dialog.getByRole('button',{name:/Not now/}).click();
   await page.waitForTimeout(1400);
   assert.equal(await dialog.isVisible(),false,'Choosing Not now must not reopen the conflict');
-  await page.evaluate(()=>{syncNow('both')});
+  await page.evaluate(()=>{syncNow('manual')});
   await dialog.waitFor({timeout:15000});
   await dialog.getByRole('button',{name:/Use cloud data/}).click();
   await page.waitForFunction(()=>db.meals.some(m=>m.id==='remote1')&&!db.meals.some(m=>m.id==='local2'),{timeout:15000});
   assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem(RECOVERY_KEY)).payload.meals.some(x=>x.id==='local2')),true,'Recovery snapshot must preserve the local version');
   assert.deepEqual(faults,[],'No JavaScript exceptions in cloud sync');
-  console.log('PASS: mocked cloud sync with optimistic updates, conflict cancel and recovery snapshot');
+  console.log('PASS: one sync per refresh, legacy-normalized comparison, persisted baseline, real conflict choice and recovery snapshot');
  }finally{await page.close()}
 }
