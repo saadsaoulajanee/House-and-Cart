@@ -9,10 +9,13 @@ await page.route('https://cdn.jsdelivr.net/npm/@supabase/**',route=>route.abort(
 try {
  await page.goto(origin,{waitUntil:'domcontentloaded'});
  await page.waitForSelector('#mobileNav button');
- assert.match(await page.locator('#appVersion').innerText(),/v3\.5\.0/);
+ assert.match(await page.locator('#appVersion').innerText(),/v3\.6\.0/);
  assert.match(await page.locator('.brand').innerText(),/House & Cart/);
  assert.equal(await page.locator('.mobile-bottom-nav button').count(),5);
  assert.equal(await page.locator('#cloudStatusDetail').count(),0);
+ assert.equal(await page.locator('.mode-row #cloudStatusBar').count(),1,'Cloud badge must be beside Kitchen and Home care');
+ const modeBox=await page.locator('#modeKitchen').boundingBox(),syncBox=await page.locator('#cloudStatusBar').boundingBox();
+ assert.ok(syncBox.x>modeBox.x+modeBox.width&&Math.abs(syncBox.y-modeBox.y)<15,'Cloud badge aligned at right of modes');
  assert.equal(await page.locator('body').evaluate(el=>el.scrollWidth<=window.innerWidth),true,'Mobile horizontal overflow');
  assert.equal(await page.evaluate(()=>formatQuantity(300,'ml')),'300 mL');
  assert.equal(await page.evaluate(()=>formatQuantity(1000,'ml')),'1 L');
@@ -72,6 +75,7 @@ try {
  assert.equal(await page.locator('.family-editor-row[data-name="Risotto & Rice"]').count(),1);
  await page.locator('#modalback .x').click();
  await page.getByRole('button',{name:/Create meal/}).click();
+ await page.locator('#mealForm .tag-pick',{hasText:'Chicken'}).click();
  assert.equal(await page.locator('#mealForm select[name="category"] option').filter({hasText:'Midnight feast'}).count(),1,'Custom occasion appears in recipe category choices');
  assert.equal(await page.locator('#mealForm select[name="family"] option').filter({hasText:'Risotto & Rice'}).count(),1);
  const familySelect=page.locator('#mealForm select[name="family"] + .styled-select');
@@ -85,6 +89,7 @@ try {
  await page.locator('#mealForm input[name="name"]').fill('Strawberry smoothie');
  await page.locator('#mealForm button[type="submit"],#mealForm button.btn.green').first().click();
  assert.equal(await page.locator('#mealGrid .meal-card').count(),1);
+ assert.equal(await page.evaluate(()=>db.meals[0].tags.includes('Chicken')),true,'Parent recipe tags stored');
  assert.equal(await page.evaluate(()=>db.meals[0].family),'Risotto & Rice');
  assert.equal(await page.locator('.meal-card .family-inline-tag').innerText(),'Risotto & Rice');
  const cardFavorite=page.locator('.meal-card-favorite').first();
@@ -107,7 +112,58 @@ try {
 
 
  // Assignments survive a rename, and deletion clears only the family assignment, not the recipe.
- await page.getByRole('button',{name:/Manage families/}).click();
+
+ // A variation inherits the parent but replaces selected ingredients and may override instructions.
+ await page.locator('.meal-card h3').first().click();
+ await page.getByRole('button',{name:/Add variation/}).click();
+ assert.equal(await page.locator('#variantForm').isVisible(),true);
+ await page.locator('#variantName').fill('Fish');
+ await page.locator('.variant-base-remove').first().check();
+ await page.locator('#variantForm .tag-pick',{hasText:'Fish'}).click();
+ await page.locator('#variantForm .tag-pick',{hasText:'Dairy-free'}).click();
+ await page.getByRole('button',{name:/Add ingredient/}).click();
+ const versionRow=page.locator('#variantIngredients .ingredient-row').first();
+ await versionRow.locator('.search-picker input').fill('Salmon');
+ await versionRow.locator('.ing-qty').fill('200');
+ await page.locator('#variantCustomSteps').check();
+ await page.locator('#variantSteps').fill('Sear the salmon until golden');
+ await page.locator('#variantForm button[type="submit"]').click();
+ assert.equal(await page.evaluate(()=>db.meals[0].variants.length),1);
+ assert.equal(await page.evaluate(()=>db.meals[0].ingredients.length),1,'Original recipe should be unchanged');
+ assert.equal(await page.evaluate(()=>resolveRecipe(db.meals[0],db.meals[0].variants[0].id).ingredients.length),1);
+ assert.equal(await page.evaluate(()=>resolveRecipe(db.meals[0],db.meals[0].variants[0].id).tags.includes('Dairy-free')),true);
+ assert.match(await page.locator('#modbody .recipe-detail').innerText(),/Sear the salmon until golden/);
+ assert.ok(await page.locator('.version-pill').count()>=2);
+ assert.equal(await page.locator('#modbody .recipe-detail').getByText('Salmon',{exact:true}).count(),1);
+ assert.equal(await page.locator('#modbody .recipe-detail').getByText('Milk',{exact:true}).count(),0);
+ await page.locator('.version-pill',{hasText:'Original'}).click();
+ assert.equal(await page.locator('#modbody .recipe-detail').getByText('Milk',{exact:true}).count(),1);
+ assert.equal(await page.locator('#modbody .recipe-detail').getByText('Salmon',{exact:true}).count(),0);
+ await page.locator('.version-pill',{hasText:'Fish'}).click();
+ await page.getByRole('button',{name:/Cooking mode/}).click();
+ assert.match(await page.locator('#cookOverlay').innerText(),/Sear the salmon/);
+ await page.getByRole('button',{name:/Exit/}).click();
+ await page.locator('#modalback .x').click();
+
+ // Planner selection persists version, and ingredient roll-up is derived from that version.
+ const planned=await page.evaluate(()=>{
+   const day=dateKey(weekDays()[0]),id=db.meals[0].id;
+   return {day,id,variantId:db.meals[0].variants[0].id};
+ });
+ await page.locator('#mobileNav button[data-mobile-view="plan"]').click();
+ await page.evaluate(({day})=>editPlanSlot(day,'Lunch'),planned);
+ await page.locator('#planForm .search-picker input').fill('Strawberry smoothie');
+ await page.locator('#planVariantSelect + .styled-select .styled-select-trigger').click();
+ await page.locator('#planVariantSelect + .styled-select .styled-select-option',{hasText:'Fish'}).click();
+ await page.locator('#planForm button[type="submit"],#planForm button.btn.green').first().click();
+ assert.equal(await page.evaluate(({day})=>db.plan[day].Lunch.variantId,planned),planned.variantId);
+ const agg=await page.evaluate(()=>Object.values(aggregatePlan()).map(x=>({name:ingById(x.ingredientId)?.name,qty:x.qty,unit:x.unit})));
+ assert.ok(agg.some(x=>x.name==='Salmon'&&x.qty===200),'Fish must be included in planned ingredients');
+ assert.ok(!agg.some(x=>x.name==='Milk'),'Excluded Milk must not appear in planned ingredients');
+ await page.reload({waitUntil:'domcontentloaded'});
+ assert.equal(await page.evaluate(({day})=>db.plan[day].Lunch.variantId,planned),planned.variantId,'Version choice should survive reload');
+ await page.locator('#mobileNav button[data-mobile-view="meals"]').click();
+  await page.getByRole('button',{name:/Manage families/}).click();
  await page.locator('.family-editor-row[data-name="Risotto & Rice"] input').fill('Rice dishes');
  await page.locator('.family-editor-row[data-name="Risotto & Rice"] button[data-action="rename"]').click();
  assert.equal(await page.evaluate(()=>db.meals[0].family),'Rice dishes');
@@ -202,7 +258,7 @@ try {
 
  await testMockCloudSync(browser,origin);
  assert.deepEqual(errors,[],'Browser JavaScript exceptions');
- console.log('PASS: recipe families create/rename/delete, priority Home meals, card and detail hearts, animated swipes, backups, cloud and desktop');
+ console.log('PASS: compact sync badge, recipe versions and tags, variant-aware planner, family management, swipes, cloud and desktop');
 }finally{
  await browser.close();
 }
