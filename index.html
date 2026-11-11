@@ -1985,9 +1985,33 @@ function openEssentialEditor(id=''){
 </script>
 <script>
 
+
+/* Quick Home Care stock adjustments also update automatic Restock thresholds. */
+function adjustCareSupplyQuantity(id,direction){
+ const item=db.cleaningInventory.find(x=>x.id===id);
+ if(!item||Math.abs(Number(direction))!==1)return false;
+ const before=Math.max(0,Number(item.qty)||0),step=pantryQuantityStep(item.unit);
+ const next=Math.max(0,Number((before+Math.sign(direction)*step).toFixed(6)));
+ if(before===next)return false;
+ item.qty=next;
+ autoRestock();
+ save();
+ const current=document.querySelector('#careSupplyList .supply-row[data-supply-id="'+id+'"]');
+ if(current)current.outerHTML=cleanInventoryRow(item);
+ return true;
+}
 function cleanInventoryRow(x){
- const cats=careCategoryBadges(x);
- return '<div class="listline supply-row"><span class="supply-emoji">'+cleanEmoji(x.name)+'</span><div class="supply-info"><b>'+esc(x.name)+'</b><small>'+x.qty+' '+esc(x.unit)+' · restock at '+x.threshold+'</small><div class="care-item-tags">'+cats+'</div></div><div class="supply-actions"><span class="badge '+(x.qty<=x.threshold?'orange':'gray')+'">'+(x.qty<=x.threshold?'Low':'In stock')+'</span><button class="btn soft small" onclick="openCleanProduct(\''+x.id+'\')">Update</button></div></div>';
+ const cats=careCategoryBadges(x),step=pantryQuantityStep(x.unit);
+ const amount=esc(formatQuantity(Number(x.qty)||0,x.unit)),increment=esc(formatQuantity(step,x.unit));
+ return '<div class="listline supply-row" data-supply-id="'+esc(x.id)+'">'+
+  '<span class="supply-emoji">'+cleanEmoji(x.name)+'</span>'+
+  '<div class="supply-info"><b>'+esc(x.name)+'</b><small>'+amount+' · restock at '+esc(String(x.threshold))+'</small><div class="care-item-tags">'+cats+'</div></div>'+
+  '<div class="supply-actions"><span class="badge '+(x.qty<=x.threshold?'orange':'gray')+'">'+(x.qty<=x.threshold?'Low':'In stock')+'</span>'+
+  '<div class="pantry-quantity-controls care-supply-stepper" role="group" aria-label="Adjust '+esc(x.name)+' stock">'+
+   '<button type="button" aria-label="Decrease '+esc(x.name)+' by '+increment+'" title="Subtract '+increment+'" onclick="adjustCareSupplyQuantity(\''+x.id+'\',-1)" '+(Number(x.qty)<=0?'disabled':'')+'>−</button>'+
+   '<span class="pantry-current-quantity" aria-live="polite">'+amount+'</span>'+
+   '<button type="button" aria-label="Increase '+esc(x.name)+' by '+increment+'" title="Add '+increment+'" onclick="adjustCareSupplyQuantity(\''+x.id+'\',1)">＋</button></div>'+
+  '<button class="btn soft small" onclick="openCleanProduct(\''+x.id+'\')">Update</button></div></div>';
 }
 function cleanInventoryView(){
  return '<div class="hero"><div><div class="eyebrow">Home Care stock</div><h1>Supply cupboard</h1><p class="sub">Organise each product in multiple categories and keep accurate stock levels.</p></div><div class="row"><button class="btn soft" onclick="openCareCategoryManager()">⚙ Categories</button><button class="btn green" onclick="openCleanProduct()">＋ Add product</button></div></div><div class="card"><div class="sectionhead"><h2>Your products</h2><span class="badge">'+db.cleaningInventory.length+' tracked</span></div>'+(db.cleaningInventory.map(cleanInventoryRow).join('')||'<div class="empty">No products tracked yet. Add one above.</div>')+'</div>';
