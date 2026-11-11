@@ -606,7 +606,16 @@ async function rememberSyncFingerprint(payload){
  catch(e){console.warn('Cloud sync baseline could not be saved',e)}
 }
 
-function meaningfulHomeData(p){return !!(p?.meals?.length||p?.inventory?.length||p?.shopping?.length||p?.history?.length||p?.cleaningInventory?.length||p?.cleaningShopping?.length||Object.keys(p?.plan||{}).length||p?.ingredients?.some(i=>i.custom))}
+function meaningfulHomeData(p){
+ const defaultCategories=[...new Set(CLEAN_ESSENTIALS.map(x=>x[1]))];
+ const careCategories=p?.settings?.careCategories;
+ const changedCategories=Array.isArray(careCategories)&&(careCategories.length!==defaultCategories.length||defaultCategories.some(c=>!careCategories.some(x=>norm(x)===norm(c))));
+ const changedEssentials=(p?.cleaningEssentials||[]).some(item=>{
+  const original=CLEAN_ESSENTIALS.find(x=>norm(x[0])===norm(item.name));
+  return !original||categoriesOf(item).length!==1||norm(categoriesOf(item)[0])!==norm(original[1]);
+ });
+ return !!(p?.meals?.length||p?.inventory?.length||p?.shopping?.length||p?.history?.length||p?.cleaningInventory?.length||p?.cleaningShopping?.length||p?.cleaningHistory?.length||Object.keys(p?.plan||{}).length||p?.ingredients?.some(i=>i.custom)||changedCategories||changedEssentials||Object.keys(p?.settings?.careMonthlyBudgets||{}).length||(p?.settings?.careBudget!==undefined&&Number(p.settings.careBudget)!==100));
+}
 function snapshotForRecovery(reason='Before a change'){try{const old=localStorage.getItem(RECOVERY_KEY);const entry=JSON.stringify({created_at:new Date().toISOString(),reason,payload:cloudPayload()});localStorage.setItem(RECOVERY_KEY,entry);return true}catch(e){console.warn('Unable to save recovery snapshot',e);return false}}
 function lastSyncText(){let raw=localStorage.getItem(LAST_SYNC_AT_KEY);return raw?new Date(raw).toLocaleString(undefined,{dateStyle:'medium',timeStyle:'short'}):'Not yet'}
 async function markCloudSynced(payload,updatedAt){lastCloudPayload=stableJson(payload);cloudRemoteUpdatedAt=updatedAt||new Date().toISOString();await rememberSyncFingerprint(payload);localStorage.setItem(LAST_SYNC_AT_KEY,new Date().toISOString());dismissedSyncConflict=null;const status=document.getElementById('saveState');if(status)status.textContent='✓ Cloud synced';refreshCloudStatus()}
