@@ -9,8 +9,18 @@ await page.route('https://cdn.jsdelivr.net/npm/@supabase/**',route=>route.abort(
 try {
  await page.goto(origin,{waitUntil:'domcontentloaded'});
  await page.waitForSelector('#mobileNav button');
- assert.match(await page.locator('#appVersion').innerText(),/v3\.6\.0/);
+ assert.match(await page.locator('#appVersion').innerText(),/v3\.7\.0/);
  assert.match(await page.locator('.brand').innerText(),/House & Cart/);
+ const theme=await page.evaluate(()=>({
+  background:getComputedStyle(document.documentElement).getPropertyValue('--bg').trim().toLowerCase(),
+  ink:getComputedStyle(document.documentElement).getPropertyValue('--ink').trim().toLowerCase(),
+  champagne:getComputedStyle(document.documentElement).getPropertyValue('--champagne').trim().toLowerCase(),
+  themeColor:document.querySelector('meta[name="theme-color"]').content.toLowerCase(),
+  primary:getComputedStyle(document.querySelector('.top')).backgroundColor
+ }));
+ assert.deepEqual([theme.background,theme.ink,theme.champagne,theme.themeColor],['#f8f5ef','#26323a','#c4a574','#26323a'],'Ink & Champagne tokens and Android chrome color');
+ assert.equal(await page.locator('.mode-row #cloudStatusBar').count(),1,'Compact status remains beside mode tabs');
+
  assert.equal(await page.locator('.mobile-bottom-nav button').count(),5);
  assert.equal(await page.locator('#cloudStatusDetail').count(),0);
  assert.equal(await page.locator('.mode-row #cloudStatusBar').count(),1,'Cloud badge must be beside Kitchen and Home care');
@@ -258,7 +268,7 @@ try {
 
  await testMockCloudSync(browser,origin);
  assert.deepEqual(errors,[],'Browser JavaScript exceptions');
- console.log('PASS: compact sync badge, recipe versions and tags, variant-aware planner, family management, swipes, cloud and desktop');
+ console.log('PASS: Ink & Champagne theme, compact cloud badge, variations, tags, planner, pantry, family management, swipes and cloud');
 }finally{
  await browser.close();
 }

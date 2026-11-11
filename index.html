@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="theme-color" content="#0c0823">
+<meta name="theme-color" content="#26323A">
 <meta name="application-name" content="House & Cart">
 <meta name="description" content="Your kitchen, shopping and home care companion.">
 <link rel="manifest" href="./manifest.json">
@@ -278,10 +278,164 @@ body{background:radial-gradient(circle at 96% -8%,#f0ddce 0,transparent 34%),rad
 .version-pill.active{background:#293331;color:#fff;border-color:#293331}
 .version-selector .btn{min-height:37px}
 .recipe-card-versions{display:flex;align-items:center;gap:6px;margin-top:7px}.recipe-card-versions .version-chip{background:#edf0e9;color:#516d53}#planVariantField[hidden]{display:none}
+
+/* ─── House & Cart · Ink & Champagne / v3.7 ───────────────────
+   Color tokens and component accents. Designed to pair with
+   an eventual matching home-screen icon without changing app data.
+   -------------------------------------------------------------- */
+:root{
+ --bg:#F8F5EF;
+ --paper:#FFFEFC;
+ --ink:#26323A;
+ --muted:#6C797C;
+ --line:#E1E2DD;
+ --green:#83633D;
+ --green2:#F5EFE4;
+ --lime:#E4E9E6;
+ --orange:#B99A6A;
+ --red:#A84C45;
+ --shadow:0 12px 34px rgba(38,50,58,.07);
+ --champagne:#C4A574;
+ --champagne-deep:#7C5A2E;
+ --slate:#8B9A97;
+ --ink-soft:#35434B;
+ --mist:#EDF1EF;
+ --cream:#FAF8F3;
+}
+html{background:var(--bg)}
+body{
+ background:
+ radial-gradient(ellipse 55% 35% at 98% -4%,rgba(196,165,116,.13),transparent 75%),
+ radial-gradient(ellipse 40% 32% at 0 36%,rgba(139,154,151,.09),transparent 79%),
+ var(--bg);
+ color:var(--ink);
+}
+::selection{background:#D9C6A5;color:#202A30}
+.top{
+ background:rgba(255,254,252,.93);
+ border:1px solid #E5E4DE;
+ box-shadow:0 8px 26px rgba(38,50,58,.045);
+}
+.brand>div>span:first-child{color:var(--ink)}
+.brand .smalltext{color:#738084}
+.version-tag{background:#EFE8DA;color:#6E5534}
+.eyebrow{color:#85633C}
+.hero h1,h1{color:#26323A}
+.hero .sub,.sub{color:#6B777C}
+.card,.day{
+ background:#FFFEFC;
+ border:1px solid #E5E4DE;
+ box-shadow:0 9px 27px rgba(38,50,58,.04);
+}
+.meal-card{
+ background:#FFFEFC;
+ border-color:#E6E6E0;
+ box-shadow:0 7px 22px rgba(38,50,58,.04);
+}
+.meal-card:hover{box-shadow:0 13px 29px rgba(38,50,58,.095);border-color:#D4C8B5}
+.meal-photo{background:#E8EBE8;color:#546A6A}
+.stat strong{color:var(--ink)}
+.nav{border-bottom-color:#DDE2DF}
+.nav button{color:#627176}
+.nav button.active{background:#26323A;color:#FFFDF8;box-shadow:none}
+.nav button:hover:not(.active){background:#E9EEE9;color:#26323A}
+.tabs button{border-color:#E2E1DA;background:#FFFEFC;color:#516169}
+.tabs button.active{background:#26323A!important;border-color:#26323A!important;color:#FFFDF8!important}
+.btn{background:#26323A;color:#FFFDF8;box-shadow:none}
+.btn.green{background:#26323A!important;color:#FFFDF8!important}
+.btn.soft{background:#F3EBDD!important;color:#77552D!important}
+.btn.ghost{background:#EEF1EF;color:#3B4A51}
+.btn.danger{background:#FAEBE8;color:#9B4540}
+.btn:hover:not(:disabled){box-shadow:0 7px 19px rgba(38,50,58,.1)}
+.mode-row .tabs button{background:#F1F2EE;color:#3E5055;border-color:#E1E3DD}
+.mode-row .tabs button.active{background:#26323A!important;color:#FFFDF8!important;border-color:#26323A}
+.mode-row .cloud-status-bar{box-shadow:none!important;border-color:#DBE4E0;background:#F6F9F7}
+.mode-row .cloud-status-bar[data-state="synced"]{border-color:#CFE6DB;background:#F1F7F3}
+.mode-row .cloud-status-bar[data-state="error"]{border-color:#EECFC8;background:#FCF3F0}
+.mode-row .cloud-status-bar strong{color:#38504A}
+.field label{color:#45575C}
+.field input,.field select,.field textarea,.search-picker input,.occasion-create-row input,.family-editor-input input,.family-create-row input{
+ background:#FFFEFD;border-color:#D9DEDB;color:#26323A;
+}
+.field input:focus,.field textarea:focus,.search-picker input:focus{
+ border-color:#BBA278;box-shadow:0 0 0 3px rgba(196,165,116,.16);
+}
+.styled-select-trigger,.styled-select-menu{background:#FFFEFD;border-color:#D9DEDB;color:#26323A}
+.styled-select.open .styled-select-trigger{border-color:#C4A574}
+.slot{background:#FAFBF9;border-color:#E6E8E4}
+.day .slot[data-extra="true"]{background:#FBF9F4;border-color:#EBE4D8}
+.slot-kind{color:#7F6540}
+.planner-extra-toggle{border-color:#D6C7AD;color:#775A37}
+.planner-extra-toggle:hover{background:#F7F1E7}
+.occasion-choice{border-color:#E2E3DC;background:#FFFEFD;color:#26323A}
+.occasion-choice:hover{border-color:#C4A574;background:#F9F5EC}
+.occasion-choice span:last-child{color:#8D6A3D}
+.occasion-create-form,.family-create-form,.variant-editor-callout{background:#F9F6EF;border-color:#E7DDCA}
+.occasion-remove{color:#8D6848}
+.home-menu-day{border-color:#E3E6E1}
+.home-meal-chip{background:#F8F7F3;border-color:#E7E5DD}
+.home-meal-kind{color:#80633D}
+.home-meal-more{background:#FFFEFB;border-color:#C9B89A;color:#765A38}
+.home-meal-more:hover{background:#F4EDDF}
+.recipe-family-filter{background:#FFFEFC;border-color:#E5E4DE}
+.family-filter-chips button{background:#FFFEFC;border-color:#E4E0D7;color:#647078}
+.family-filter-chips button.active{background:#26323A;color:#FFFDF8;border-color:#26323A}
+.family-inline-tag{background:#EFE7D9;color:#745A38}
+.family-editor-row,.variant-manager-row,.variant-shared-line{background:#FFFEFC;border-color:#E5E5DD}
+.variant-remove-toggle{color:#795C3D}
+.variant-remove-toggle input,.variant-override input{accent-color:#876A43}
+.variant-editor-section{border-color:#E6E6DF}
+.recipe-tag{background:#ECF1ED;color:#3D6055;border-color:#D8E4DD}
+.tag-pick span{background:#FFFEFC;color:#586668;border-color:#DCE1DE}
+.tag-pick input:checked+span{background:#26323A;border-color:#26323A;color:#FFFEF9}
+.version-selector{border-color:#E4E4DC}
+.version-pill{background:#FFFEFC;border-color:#DED8CA;color:#57666B}
+.version-pill.active{background:#26323A;color:#FFFEF9;border-color:#26323A}
+.version-chip{background:#EEE8DC;color:#775A36}
+.recipe-card-versions .version-chip{background:#E8EEE9;color:#526B60}
+.recipe-favorite-button,.meal-card-favorite{
+ background:#FAF5EB!important;color:#97744A!important;border:1px solid #E7D8BE!important;
+}
+.recipe-favorite-button.is-favorite,.meal-card-favorite.is-favorite{
+ background:#7A5E3D!important;color:#FFFCF5!important;border-color:#7A5E3D!important;
+}
+.recipe-step{background:#FFFEFC;border-color:#E4E5DF}
+.smart-panel{background:#F6F4EE!important;border-color:#E5E0D5!important}
+.empty,.search-no-results{background:#FBFAF7;border-color:#DADBD4;color:#6D787A}
+.backup-notice{border-color:#E6D7BB;background:#FCF8F0}
+.backup-notice-content b{color:#5F513E}
+.modal{background:#FFFEFB}
+.modalhead{background:#FFFEFB;border-color:#E6E5DD}
+.modalback{background:rgba(24,36,43,.67)}
+.cloud-status-bar[data-state="synced"] .cloud-status-dot{background:#168153}
+.cloud-status-bar[data-state="error"] .cloud-status-dot,.cloud-status-bar[data-state="offline"] .cloud-status-dot{background:#B04C43}
+.mobile-menu-button{border-color:#DDE2DE;background:#F5F5F0;color:#34474F}
+.mobile-bottom-nav{
+ background:rgba(255,254,251,.97);
+ border-top:1px solid #DEE2DC;
+ box-shadow:0 -7px 25px rgba(38,50,58,.075);
+}
+.mobile-bottom-nav button{color:#647579}
+.mobile-bottom-nav button.active{background:#EDE8DB;color:#26323A}
+.mobile-bottom-nav button.active .nav-symbol{color:#8B6940}
+.quick-menu-item{background:#FFFEFB;border-color:#E5E4DC;color:#26323A}
+.quick-menu-item span{color:#8C6B43}
+.quick-menu-tools .btn:first-child{background:#26323A;color:white}
+.cook-overlay{background:#F8F5EF}
+.expiry-tag{background:#F3EBDA;color:#7B5B2F}
+.aisle-head{color:#80633D}
+:where(button,a,input,textarea,select,[role="button"]):focus-visible{
+ outline:3px solid #B59769!important;outline-offset:3px!important;
+}
+@media(max-width:650px){
+ .app{background:transparent}
+ .top{background:rgba(255,254,252,.98)}
+ .mode-row .tabs button.active{box-shadow:none}
+}
 </style>
 </head>
 <body><div class="app">
-<header class="top"><div class="brand"><img class="logo brand-logo" src="./icon-192.png" width="48" height="48" alt="House & Cart icon"><div><span style="font-family:Georgia,serif;font-size:27px;font-weight:500;letter-spacing:-1px">House &amp; Cart</span><div class="smalltext" style="letter-spacing:2px;text-transform:uppercase;font-size:9px">Your everyday home companion</div><span class="version-tag" id="appVersion" title="House & Cart app version">v3.6.0</span></div></div><div class="top-actions"><span class="pill" id="saveState">Saved on this device</span><button class="btn soft small" onclick="exportData()">Export backup</button><button class="btn ghost small" onclick="document.getElementById('importFile').click()">Import</button><button class="btn green small" onclick="openCloudAccount()">Account & sync</button><input id="importFile" type="file" accept=".json,application/json" hidden></div><button class="mobile-menu-button" type="button" aria-label="Open app menu" onclick="openMoreMenu()">☰ <span>Menu</span></button></header>
+<header class="top"><div class="brand"><img class="logo brand-logo" src="./icon-192.png" width="48" height="48" alt="House & Cart icon"><div><span style="font-family:Georgia,serif;font-size:27px;font-weight:500;letter-spacing:-1px">House &amp; Cart</span><div class="smalltext" style="letter-spacing:2px;text-transform:uppercase;font-size:9px">Your everyday home companion</div><span class="version-tag" id="appVersion" title="House & Cart app version">v3.7.0</span></div></div><div class="top-actions"><span class="pill" id="saveState">Saved on this device</span><button class="btn soft small" onclick="exportData()">Export backup</button><button class="btn ghost small" onclick="document.getElementById('importFile').click()">Import</button><button class="btn green small" onclick="openCloudAccount()">Account & sync</button><input id="importFile" type="file" accept=".json,application/json" hidden></div><button class="mobile-menu-button" type="button" aria-label="Open app menu" onclick="openMoreMenu()">☰ <span>Menu</span></button></header>
 <div class="row mode-row" style="justify-content:space-between;align-items:center;margin:8px 0 4px"><div class="tabs" style="margin:0"><button id="modeKitchen" class="active" onclick="setMode('kitchen')">🍋 Kitchen</button><button id="modeCare" onclick="setMode('care')">🧺 Home care</button></div><div class="cloud-status-bar" id="cloudStatusBar" data-state="local" role="status" aria-live="polite"><span class="cloud-status-dot" aria-hidden="true"></span><strong id="cloudStatusLabel">Saved on this device</strong></div><span class="smalltext" id="modeCaption">Recipes, ingredients & weekly rituals</span></div><nav class="nav" id="nav" aria-label="Main navigation"><button data-view="home" class="active">⌂ Overview</button><button data-view="meals">♡ Recipes</button><button data-view="plan">▦ Planner</button><button data-view="shop">🛒 Shopping</button><button data-view="kitchen">🥬 Pantry</button><button data-view="history">↗ History</button><button data-view="cookable" style="display:none">✨ What can I cook?</button><button data-view="budget" style="display:none">◉ Budget</button></nav>
 <main id="main" tabindex="-1"></main></div><nav id="mobileNav" class="mobile-bottom-nav" aria-label="Mobile navigation"></nav>
 <div class="modalback" id="modalback"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="modtitle" tabindex="-1"><div class="modalhead"><h2 id="modtitle">Edit</h2><button class="x" type="button" aria-label="Close dialog" onclick="closeModal()">✕</button></div><div id="modbody"></div></div></div>
