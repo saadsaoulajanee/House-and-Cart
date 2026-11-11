@@ -630,79 +630,48 @@ body{
  .supply-row .supply-actions>.btn{order:2}
 }
 
-/* v3.9.7: one compact horizontal row per kitchen inventory item. */
+/* v3.9.8: Kitchen inventory, exactly one row with ingredient | stepper | actions.
+   Consolidated previous conflicting v3.9.6 and v3.9.7 rules. */
 #inventoryList>.listline{
  display:grid;
- grid-template-columns:minmax(0,1fr) auto auto;
+ grid-template-columns:minmax(0,1fr) max-content max-content;
  align-items:center;
- column-gap:10px;
- row-gap:0;
+ gap:8px;
  padding:12px 0;
+ flex-wrap:nowrap;
 }
 #inventoryList>.listline>.grow{
- grid-column:1;grid-row:1;min-width:0;overflow-wrap:anywhere;
+ grid-column:1;grid-row:1;min-width:0;
+ flex:none;overflow-wrap:anywhere;
 }
 #inventoryList>.listline>.pantry-quantity-controls{
  grid-column:2;grid-row:1;justify-self:center;
+ flex:none;min-width:0;
 }
 #inventoryList>.listline>.pantry-row-actions{
  grid-column:3;grid-row:1;justify-self:end;
+ display:flex;flex-wrap:nowrap;gap:4px;
 }
 @media(max-width:650px){
  #inventoryList>.listline{
-  grid-template-columns:minmax(0,1fr) auto auto;
-  align-items:center;
-  gap:6px;
-  padding:11px 0;
+  grid-template-columns:minmax(0,1fr) max-content max-content;
+  align-items:center;gap:6px;padding:11px 0;
  }
  #inventoryList>.listline>.grow{grid-column:1;grid-row:1}
  #inventoryList>.listline>.pantry-quantity-controls{grid-column:2;grid-row:1;justify-self:center}
  #inventoryList>.listline>.pantry-row-actions{grid-column:3;grid-row:1;justify-self:end}
- #inventoryList .pantry-quantity-controls button{width:28px;height:35px;font-size:19px}
+ #inventoryList .pantry-quantity-controls button{width:27px;height:36px;font-size:19px}
  #inventoryList .pantry-current-quantity{min-width:38px;padding:5px 3px;font-size:11px}
- #inventoryList .pantry-row-actions{gap:4px}
- #inventoryList .pantry-row-actions .btn{min-height:35px;padding:6px 7px;font-size:11px}
+ #inventoryList .pantry-row-actions .btn{min-height:36px;padding:6px 7px;font-size:11px}
  #inventoryList>.listline>.grow b{font-size:13px}
- #inventoryList>.listline>.grow small{font-size:11px;line-height:1.3}
+ #inventoryList>.listline>.grow small{font-size:11px;line-height:1.25}
 }
 @media(max-width:390px){
  #inventoryList>.listline{gap:4px}
- #inventoryList .pantry-quantity-controls button{width:25px}
- #inventoryList .pantry-current-quantity{min-width:33px;padding:4px 2px;font-size:10px}
+ #inventoryList .pantry-quantity-controls button{width:24px}
+ #inventoryList .pantry-current-quantity{min-width:32px;padding:4px 2px;font-size:10px}
  #inventoryList .pantry-row-actions .btn{padding:6px 5px;font-size:10px}
 }
-
-/* v3.9.6: align kitchen inventory quantity and edit/delete controls in a single row. */
-#inventoryList>.listline{
- display:grid;
- grid-template-columns:minmax(0,1fr) auto auto;
- align-items:center;
- column-gap:10px;
- row-gap:7px;
-}
-#inventoryList>.listline>.grow{grid-column:1;min-width:0;overflow-wrap:anywhere}
-#inventoryList>.listline>.pantry-quantity-controls{grid-column:2;justify-self:end;min-width:0}
-#inventoryList>.listline>.pantry-row-actions{grid-column:3;justify-self:end;justify-content:flex-end;white-space:nowrap}
-@media(max-width:650px){
- #inventoryList>.listline{
-  grid-template-columns:minmax(0,1fr) auto;
-  column-gap:8px;row-gap:9px;padding:13px 0;
- }
- #inventoryList>.listline>.grow{grid-column:1/-1;grid-row:1}
- #inventoryList>.listline>.pantry-quantity-controls{grid-column:1;grid-row:2;justify-self:start}
- #inventoryList>.listline>.pantry-row-actions{grid-column:2;grid-row:2;justify-self:end}
- #inventoryList .pantry-current-quantity{min-width:55px;padding:5px 6px;font-size:12px}
- #inventoryList .pantry-quantity-controls button{width:35px;height:39px}
- #inventoryList .pantry-row-actions{gap:5px}
- #inventoryList .pantry-row-actions .btn{min-height:39px;padding:7px 10px}
-}
-@media(max-width:370px){
- #inventoryList>.listline{column-gap:5px}
- #inventoryList .pantry-current-quantity{min-width:43px;padding:5px 3px;font-size:11px}
- #inventoryList .pantry-quantity-controls button{width:30px}
- #inventoryList .pantry-row-actions .btn{padding:7px 8px}
-}
-
 /* v3.9.5: Home Care dashboard layout, optimized for tablets and phones. */
 @media(max-width:800px){
  .care-home-dashboard{gap:12px;align-items:start}
@@ -802,7 +771,7 @@ body{
 </style>
 </head>
 <body><div class="app">
-<header class="top"><div class="brand"><img class="logo brand-logo" src="./icon-192.png?v=3.7.1" width="48" height="48" alt="House & Cart icon"><div class="brand-copy"><div class="brand-name-row"><span style="font-family:Georgia,serif;font-size:27px;font-weight:500;letter-spacing:-1px">House &amp; Cart</span><span class="version-tag" id="appVersion" title="House & Cart app version">v3.9.7</span></div><div class="smalltext" style="letter-spacing:2px;text-transform:uppercase;font-size:9px">Your everyday home companion</div></div></div><div class="top-actions"><span class="pill" id="saveState">Saved on this device</span><button class="btn soft small" onclick="exportData()">Export backup</button><button class="btn ghost small" onclick="document.getElementById('importFile').click()">Import</button><button class="btn green small" onclick="openCloudAccount()">Account & sync</button><input id="importFile" type="file" accept=".json,application/json" hidden></div><button class="mobile-menu-button" type="button" aria-label="Open app menu" onclick="openMoreMenu()">☰ <span>Menu</span></button></header>
+<header class="top"><div class="brand"><img class="logo brand-logo" src="./icon-192.png?v=3.7.1" width="48" height="48" alt="House & Cart icon"><div class="brand-copy"><div class="brand-name-row"><span style="font-family:Georgia,serif;font-size:27px;font-weight:500;letter-spacing:-1px">House &amp; Cart</span><span class="version-tag" id="appVersion" title="House & Cart app version">v3.9.8</span></div><div class="smalltext" style="letter-spacing:2px;text-transform:uppercase;font-size:9px">Your everyday home companion</div></div></div><div class="top-actions"><span class="pill" id="saveState">Saved on this device</span><button class="btn soft small" onclick="exportData()">Export backup</button><button class="btn ghost small" onclick="document.getElementById('importFile').click()">Import</button><button class="btn green small" onclick="openCloudAccount()">Account & sync</button><input id="importFile" type="file" accept=".json,application/json" hidden></div><button class="mobile-menu-button" type="button" aria-label="Open app menu" onclick="openMoreMenu()">☰ <span>Menu</span></button></header>
 <div class="row mode-row" style="justify-content:space-between;align-items:center;margin:8px 0 4px"><div class="tabs" style="margin:0"><button id="modeKitchen" class="active" onclick="setMode('kitchen')">🍋 Kitchen</button><button id="modeCare" onclick="setMode('care')">🧺 Home care</button></div><div class="cloud-status-bar" id="cloudStatusBar" data-state="local" role="status" aria-live="polite"><span class="cloud-status-dot" aria-hidden="true"></span><strong id="cloudStatusLabel">Saved on this device</strong></div><span class="smalltext" id="modeCaption">Recipes, ingredients & weekly rituals</span></div><nav class="nav" id="nav" aria-label="Main navigation"><button data-view="home" class="active">⌂ Overview</button><button data-view="meals">♡ Recipes</button><button data-view="plan">▦ Planner</button><button data-view="shop">🛒 Shopping</button><button data-view="kitchen">🥬 Pantry</button><button data-view="history">↗ History</button><button data-view="cookable" style="display:none">✨ What can I cook?</button><button data-view="budget" style="display:none">◉ Budget</button></nav>
 <main id="main" tabindex="-1"></main></div><nav id="mobileNav" class="mobile-bottom-nav" aria-label="Mobile navigation"></nav>
 <div class="modalback" id="modalback"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="modtitle" tabindex="-1"><div class="modalhead"><h2 id="modtitle">Edit</h2><button class="x" type="button" aria-label="Close dialog" onclick="closeModal()">✕</button></div><div id="modbody"></div></div></div>
