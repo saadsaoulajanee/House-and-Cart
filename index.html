@@ -474,6 +474,18 @@ body{
 .care-place-row .grow{display:grid;gap:2px}.care-place-row strong{white-space:nowrap}
 .care-budget-breakdown .progress{margin:9px 0 19px}
 @media(max-width:650px){.care-budget-toolbar{grid-template-columns:1fr}.mobile-bottom-nav button{font-size:9px;gap:3px;padding:7px 1px}.mobile-bottom-nav .nav-symbol{font-size:18px}.mobile-bottom-nav .nav-symbol svg{width:19px;height:19px}}
+
+/* Roomier Home Care category tiles on small screens */
+@media(max-width:560px){
+ .essentials-grid{grid-template-columns:minmax(0,1fr)!important;gap:10px}
+ .essentials-grid>.essentials-category{grid-column:1/-1!important;width:100%!important}
+ .essentials-category{padding:15px!important}
+ .essentials-category h2{font-size:18px;margin-bottom:7px}
+ .essential-row{grid-template-columns:26px minmax(0,1fr) auto!important;gap:10px!important;align-items:center}
+ .essential-actions{grid-column:3!important;align-self:center;justify-content:flex-end;flex-wrap:wrap;margin-top:0!important;max-width:105px}
+ .essential-main b{font-size:14px}
+ .essential-actions .btn{font-size:11px!important;padding:7px 9px!important}
+}
 </style>
 </head>
 <body><div class="app">
@@ -524,6 +536,7 @@ function migrateCareData(){
    if(!db.settings.careCategories.some(x=>norm(x)===norm(cat)))db.settings.careCategories.push(cat);
  db.settings.careMonthlyBudgets??={};
  if(!Number.isFinite(Number(db.settings.careBudget)))db.settings.careBudget=100;
+ try{localStorage.setItem(KEY,JSON.stringify(db))}catch(e){console.warn('Care migration could not be stored locally',e)}
  return db;
 }
 
@@ -1351,7 +1364,7 @@ function restoreSafetySnapshotNow(){
   if(!item?.payload||!Array.isArray(item.payload.meals)||!Array.isArray(item.payload.ingredients))throw Error('Invalid recovery snapshot');
   if(!confirm('Restore this snapshot? Your current local version will be replaced.'))return;
   const restored={...fresh(),...item.payload};
-  localStorage.setItem(KEY,JSON.stringify(restored));db=restored;
+  localStorage.setItem(KEY,JSON.stringify(restored));db=restored;migrateCareData();
   save();closeModal();render();alert('Recovery snapshot restored. The app will sync your restored data if you are signed in.');
  }catch(e){alert('Could not restore: '+e.message)}
 }
