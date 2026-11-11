@@ -747,6 +747,43 @@ body{
  .supply-row .supply-actions>.btn{padding:7px 7px}
 }
 
+/* v3.9.10: compact single-line Home Care cupboard rows, matching Kitchen. */
+#careSupplyList .supply-row{
+ display:grid;
+ grid-template-columns:26px minmax(0,1fr) max-content;
+ align-items:center;
+ column-gap:10px;
+ row-gap:0;
+ padding:12px 0;
+}
+#careSupplyList .supply-row>.supply-emoji{grid-column:1;grid-row:1;align-self:center}
+#careSupplyList .supply-row>.supply-info{grid-column:2;grid-row:1;min-width:0;overflow-wrap:anywhere}
+#careSupplyList .supply-row>.supply-actions{
+ grid-column:3;grid-row:1;justify-self:end;
+ display:flex;flex-wrap:nowrap;align-items:center;gap:6px;width:auto;
+}
+#careSupplyList .supply-info .care-item-tags{display:flex;flex-wrap:wrap;gap:4px;align-items:center;margin-top:5px}
+#careSupplyList .supply-info .care-item-tags .badge{font-size:10px;padding:4px 7px}
+#careSupplyList .supply-actions>.btn{min-width:38px;min-height:38px;padding:7px;font-size:16px}
+@media(max-width:600px){
+ #careSupplyList .supply-row{grid-template-columns:22px minmax(0,1fr) max-content;column-gap:7px;padding:11px 0}
+ #careSupplyList .supply-emoji{font-size:20px}
+ #careSupplyList .supply-info b{font-size:13px;line-height:1.2}
+ #careSupplyList .supply-info small{font-size:11px;line-height:1.25}
+ #careSupplyList .supply-info .care-item-tags{gap:3px}
+ #careSupplyList .supply-info .care-item-tags .badge{font-size:9px;padding:3px 5px}
+ #careSupplyList .supply-actions{gap:4px}
+ #careSupplyList .care-supply-stepper button{width:26px;min-width:26px;height:36px;min-height:36px;font-size:18px}
+ #careSupplyList .care-supply-stepper .pantry-current-quantity{min-width:43px;padding:4px 3px;font-size:11px}
+ #careSupplyList .supply-actions>.btn{min-width:34px;min-height:36px;padding:6px;font-size:15px}
+}
+@media(max-width:380px){
+ #careSupplyList .supply-row{column-gap:5px}
+ #careSupplyList .care-supply-stepper button{width:23px;min-width:23px}
+ #careSupplyList .care-supply-stepper .pantry-current-quantity{min-width:37px;font-size:10px}
+ #careSupplyList .supply-actions>.btn{min-width:31px;padding:5px}
+}
+
 /* v3.9.2: consistent autocomplete dropdowns across Kitchen and Home Care */
 .app-autocomplete{position:relative;min-width:0}
 .app-autocomplete input{width:100%;min-width:0}
@@ -771,7 +808,7 @@ body{
 </style>
 </head>
 <body><div class="app">
-<header class="top"><div class="brand"><img class="logo brand-logo" src="./icon-192.png?v=3.7.1" width="48" height="48" alt="House & Cart icon"><div class="brand-copy"><div class="brand-name-row"><span style="font-family:Georgia,serif;font-size:27px;font-weight:500;letter-spacing:-1px">House &amp; Cart</span><span class="version-tag" id="appVersion" title="House & Cart app version">v3.9.9</span></div><div class="smalltext" style="letter-spacing:2px;text-transform:uppercase;font-size:9px">Your everyday home companion</div></div></div><div class="top-actions"><span class="pill" id="saveState">Saved on this device</span><button class="btn soft small" onclick="exportData()">Export backup</button><button class="btn ghost small" onclick="document.getElementById('importFile').click()">Import</button><button class="btn green small" onclick="openCloudAccount()">Account & sync</button><input id="importFile" type="file" accept=".json,application/json" hidden></div><button class="mobile-menu-button" type="button" aria-label="Open app menu" onclick="openMoreMenu()">☰ <span>Menu</span></button></header>
+<header class="top"><div class="brand"><img class="logo brand-logo" src="./icon-192.png?v=3.7.1" width="48" height="48" alt="House & Cart icon"><div class="brand-copy"><div class="brand-name-row"><span style="font-family:Georgia,serif;font-size:27px;font-weight:500;letter-spacing:-1px">House &amp; Cart</span><span class="version-tag" id="appVersion" title="House & Cart app version">v3.9.10</span></div><div class="smalltext" style="letter-spacing:2px;text-transform:uppercase;font-size:9px">Your everyday home companion</div></div></div><div class="top-actions"><span class="pill" id="saveState">Saved on this device</span><button class="btn soft small" onclick="exportData()">Export backup</button><button class="btn ghost small" onclick="document.getElementById('importFile').click()">Import</button><button class="btn green small" onclick="openCloudAccount()">Account & sync</button><input id="importFile" type="file" accept=".json,application/json" hidden></div><button class="mobile-menu-button" type="button" aria-label="Open app menu" onclick="openMoreMenu()">☰ <span>Menu</span></button></header>
 <div class="row mode-row" style="justify-content:space-between;align-items:center;margin:8px 0 4px"><div class="tabs" style="margin:0"><button id="modeKitchen" class="active" onclick="setMode('kitchen')">🍋 Kitchen</button><button id="modeCare" onclick="setMode('care')">🧺 Home care</button></div><div class="cloud-status-bar" id="cloudStatusBar" data-state="local" role="status" aria-live="polite"><span class="cloud-status-dot" aria-hidden="true"></span><strong id="cloudStatusLabel">Saved on this device</strong></div><span class="smalltext" id="modeCaption">Recipes, ingredients & weekly rituals</span></div><nav class="nav" id="nav" aria-label="Main navigation"><button data-view="home" class="active">⌂ Overview</button><button data-view="meals">♡ Recipes</button><button data-view="plan">▦ Planner</button><button data-view="shop">🛒 Shopping</button><button data-view="kitchen">🥬 Pantry</button><button data-view="history">↗ History</button><button data-view="cookable" style="display:none">✨ What can I cook?</button><button data-view="budget" style="display:none">◉ Budget</button></nav>
 <main id="main" tabindex="-1"></main></div><nav id="mobileNav" class="mobile-bottom-nav" aria-label="Mobile navigation"></nav>
 <div class="modalback" id="modalback"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="modtitle" tabindex="-1"><div class="modalhead"><h2 id="modtitle">Edit</h2><button class="x" type="button" aria-label="Close dialog" onclick="closeModal()">✕</button></div><div id="modbody"></div></div></div>
@@ -2377,13 +2414,13 @@ function cleanInventoryRow(x){
  const amount=esc(formatQuantity(Number(x.qty)||0,x.unit)),increment=esc(formatQuantity(step,x.unit));
  return '<div class="listline supply-row" data-supply-id="'+esc(x.id)+'">'+
   '<span class="supply-emoji">'+cleanEmoji(x.name)+'</span>'+
-  '<div class="supply-info"><b>'+esc(x.name)+'</b><small>'+amount+' · restock at '+esc(String(x.threshold))+'</small><div class="care-item-tags">'+cats+'</div></div>'+
-  '<div class="supply-actions"><span class="badge '+(x.qty<=x.threshold?'orange':'gray')+'">'+(x.qty<=x.threshold?'Low':'In stock')+'</span>'+
+  '<div class="supply-info"><b>'+esc(x.name)+'</b><small>Restock at '+esc(String(x.threshold))+'</small><div class="care-item-tags">'+cats+'<span class="badge '+(x.qty<=x.threshold?'orange':'gray')+'">'+(x.qty<=x.threshold?'Low':'In stock')+'</span></div></div>'+
+  '<div class="supply-actions">'+
   '<div class="pantry-quantity-controls care-supply-stepper" role="group" aria-label="Adjust '+esc(x.name)+' stock">'+
    '<button type="button" aria-label="Decrease '+esc(x.name)+' by '+increment+'" title="Subtract '+increment+'" onclick="adjustCareSupplyQuantity(\''+x.id+'\',-1)" '+(Number(x.qty)<=0?'disabled':'')+'>−</button>'+
    '<span class="pantry-current-quantity" aria-live="polite">'+amount+'</span>'+
    '<button type="button" aria-label="Increase '+esc(x.name)+' by '+increment+'" title="Add '+increment+'" onclick="adjustCareSupplyQuantity(\''+x.id+'\',1)">＋</button></div>'+
-  '<button class="btn soft small" onclick="openCleanProduct(\''+x.id+'\')">Update</button></div></div>';
+  '<button class="btn soft small" title="Edit product" aria-label="Edit '+esc(x.name)+'" onclick="openCleanProduct(\''+x.id+'\')">✏️</button></div></div>';
 }
 function cleanInventoryView(){
  return '<div class="hero"><div><div class="eyebrow">Home Care stock</div><h1>Supply cupboard</h1><p class="sub">Organise each product in multiple categories and keep accurate stock levels.</p></div><div class="row"><button class="btn soft" onclick="openCareCategoryManager()">⚙ Categories</button><button class="btn green" onclick="openCleanProduct()">＋ Add product</button></div></div><div class="card"><div class="sectionhead"><h2>Your products</h2><span class="badge">'+db.cleaningInventory.length+' tracked</span></div><div id="careSupplyList">'+(db.cleaningInventory.map(cleanInventoryRow).join('')||'<div class="empty">No products tracked yet. Add one above.</div>')+'</div></div>';
