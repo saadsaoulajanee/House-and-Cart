@@ -460,6 +460,20 @@ body{
 .care-cat-error[hidden]{display:none}
 @media(max-width:530px){.care-cat-edit-row{flex-wrap:wrap}.care-cat-edit-main{flex:1 1 100%}.care-cat-edit-row .btn{flex:1}.care-cat-add{flex-wrap:wrap}.care-cat-add input{flex:1 1 100%}}
 .care-item-tags{display:flex;flex-wrap:wrap;gap:3px;margin-top:5px}.care-restock-line{align-items:center}.care-restock-emoji{font-size:21px}.care-restock-line .grow{min-width:0}.care-restock-line .check{width:21px;height:21px;accent-color:#26323A}.care-restock-line .btn{min-height:36px}
+
+/* Home Care trip history and distinct monthly budget */
+.care-trip-list{display:grid;gap:11px;margin:15px 0 25px}
+.care-trip-card{padding:16px 18px}
+.care-trip-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+.care-trip-head b{font-size:15px}.care-trip-head p{margin:3px 0}
+.care-trip-price{font-size:17px;color:var(--ink);white-space:nowrap}
+.care-trip-actions,.care-budget-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:12px}
+.care-budget-toolbar{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:15px;margin-bottom:15px;padding:16px}
+.care-budget-toolbar .field{margin:0;min-width:0}
+.care-place-row{display:flex;align-items:center;gap:14px;justify-content:space-between;border-top:1px solid #E4E6DF;padding:12px 3px}
+.care-place-row .grow{display:grid;gap:2px}.care-place-row strong{white-space:nowrap}
+.care-budget-breakdown .progress{margin:9px 0 19px}
+@media(max-width:650px){.care-budget-toolbar{grid-template-columns:1fr}.mobile-bottom-nav button{font-size:9px;gap:3px;padding:7px 1px}.mobile-bottom-nav .nav-symbol{font-size:18px}.mobile-bottom-nav .nav-symbol svg{width:19px;height:19px}}
 </style>
 </head>
 <body><div class="app">
@@ -731,7 +745,7 @@ function aggregatePlan(){let map={};for(const p of allPlanned()){let parent=meal
 function autoAddOutOfStockSpices(){for(const ing of db.ingredients.filter(isSpice)){let inv=db.inventory.find(x=>x.ingredientId===ing.id);let out=!!inv&&inv.spiceStatus==='out';let existing=db.shopping.find(x=>x.source==='spice-auto'&&x.ingredientId===ing.id);if(out&&!existing)db.shopping.push({id:uid(),ingredientId:ing.id,name:ing.name,category:'Spices',qty:0,unit:'',checked:false,source:'spice-auto',auto:true,price:0});if(!out&&existing)db.shopping=db.shopping.filter(x=>!(x.source==='spice-auto'&&x.ingredientId===ing.id))}}
 function addShoppingFromPlan(){let agg=Object.values(aggregatePlan()),oldPlan=db.shopping.filter(x=>x.source==='plan'),other=db.shopping.filter(x=>x.source!=='plan');let next=[];for(const need of agg){let have=pantryQty(need.ingredientId,need.unit),remaining=Math.max(0,need.qty-have);let prior=oldPlan.find(x=>x.ingredientId===need.ingredientId&&convertQty(1,x.unit,need.unit)!==null);if(remaining>0.000001){next.push({id:prior?.id||uid(),ingredientId:need.ingredientId,name:ingById(need.ingredientId)?.name||'Ingredient',qty:remaining,unit:need.unit,category:need.category,checked:prior?.checked||false,source:'plan',price:prior?.price||0,plannedQty:need.qty,pantryDeducted:Math.min(have,need.qty)});}}db.shopping=[...other,...next];autoAddOutOfStockSpices();save();render();let covered=agg.filter(x=>pantryQty(x.ingredientId,x.unit)>=x.qty).length;alert('Shopping list updated. Pantry stock was deducted from planned quantities.'+(covered?' '+covered+' ingredient(s) are fully covered by your pantry.':''))}
 function setMode(mode){appMode=mode;view='home';render()}
-function render(){document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('active',b.dataset.view===view));document.getElementById('modeKitchen')?.classList.toggle('active',appMode==='kitchen');document.getElementById('modeCare')?.classList.toggle('active',appMode==='care');document.getElementById('modeCaption').textContent=appMode==='kitchen'?'Recipes, ingredients & weekly rituals':'Supplies, stock levels & automatic restocking';let care=appMode==='care';document.querySelectorAll('#nav button').forEach(b=>{let labels=care?{home:'⌂ Overview',meals:'✦ Essentials',plan:'',shop:'🧺 Restock cart',kitchen:'🧴 Supply cupboard',history:''}:{home:'⌂ Overview',meals:'♡ Recipes',plan:'▦ Planner',shop:'🛒 Shopping',kitchen:'🥬 Pantry',history:'↗ History'};b.textContent=labels[b.dataset.view]??b.textContent;b.style.display=labels[b.dataset.view]===''?'none':''});if(care&&!['home','meals','shop','kitchen'].includes(view))view='home';let routes=care?{home:careHome,meals:essentialsView,shop:cleanShopView,kitchen:cleanInventoryView}:{home:homeView,meals:mealsView,plan:planView,shop:shopView,kitchen:kitchenView,history:historyView};document.getElementById('main').innerHTML=(routes[view]||routes.home)()}
+function render(){document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('active',b.dataset.view===view));document.getElementById('modeKitchen')?.classList.toggle('active',appMode==='kitchen');document.getElementById('modeCare')?.classList.toggle('active',appMode==='care');document.getElementById('modeCaption').textContent=appMode==='kitchen'?'Recipes, ingredients & weekly rituals':'Supplies, stock levels & automatic restocking';let care=appMode==='care';document.querySelectorAll('#nav button').forEach(b=>{let labels=care?{home:'⌂ Overview',meals:'✦ Essentials',plan:'',shop:'🧺 Restock cart',kitchen:'🧴 Supply cupboard',history:'↗ History'}:{home:'⌂ Overview',meals:'♡ Recipes',plan:'▦ Planner',shop:'🛒 Shopping',kitchen:'🥬 Pantry',history:'↗ History'};b.textContent=labels[b.dataset.view]??b.textContent;b.style.display=labels[b.dataset.view]===''?'none':''});if(care&&!['home','meals','shop','kitchen','history','budget'].includes(view))view='home';let routes=care?{home:careHome,meals:essentialsView,shop:cleanShopView,kitchen:cleanInventoryView,history:careHistoryView,budget:careBudgetView}:{home:homeView,meals:mealsView,plan:planView,shop:shopView,kitchen:kitchenView,history:historyView};document.getElementById('main').innerHTML=(routes[view]||routes.home)()}
 
 const expandedHomeDays=new Set();
 function homeDayRow(day){
@@ -1273,7 +1287,7 @@ function budgetMonthLabel(key){let [y,m]=key.split('-').map(Number);return new I
 function monthlyBudget(key=currentBudgetMonth()){db.settings.monthlyBudgets??={};if(!Object.prototype.hasOwnProperty.call(db.settings.monthlyBudgets,key))db.settings.monthlyBudgets[key]=Number(db.settings.budget)||0;return Number(db.settings.monthlyBudgets[key])||0}
 function budgetView(){let month=currentBudgetMonth(),monthName=budgetMonthLabel(month),spent=db.history.filter(h=>(h.date||'').slice(0,7)===month).reduce((a,h)=>a+(+h.total||0),0),b=monthlyBudget(month);return `<div class="hero"><div><div class="eyebrow">Household spending · ${esc(monthName)}</div><h1>Budget overview</h1><p class="sub">Your budget for <b>${esc(monthName)}</b>. A fresh monthly budget period starts automatically on the 1st.</p></div></div><div class="grid budget-grid"><div class="card span4 stat budget-target-card"><span>${esc(monthName)} budget</span><strong>${money(b)}</strong><label class="budget-input-label">Spending limit for ${esc(monthName)}</label><input class="budget-target-input" type="number" min="0" step=".01" value="${b}" onchange="db.settings.monthlyBudgets??={};db.settings.monthlyBudgets['${month}']=Math.max(0,+this.value||0);save();render()"><small class="smalltext">This amount is saved for ${esc(monthName)} only. Next month starts a separate budget using your usual target of ${money(db.settings.budget)}.</small></div><div class="card span4 stat budget-spent-card"><span>Recorded in ${esc(monthName)}</span><strong>${money(spent)}</strong></div><div class="card span4 stat budget-remaining-card"><span>Remaining in ${esc(monthName)}</span><strong>${money(b-spent)}</strong></div><div class="card full budget-trips-card"><h2>Recent trips</h2>${db.history.slice(0,8).map(h=>`<div class="listline budget-trip-row"><span class="grow"><b>${esc(h.store||'Shopping trip')}</b><small>${fmtDate(h.date)} · ${(h.items||[]).length} items</small></span><b>${money(h.total)}</b><button class="btn ghost small" onclick="editShoppingTrip('${h.id}')">Edit</button></div>`).join('')||'<div class="empty">Record a shopping trip or scan a receipt to start.</div>'}</div></div>`}
 const _shopView30=shopView;shopView=function(){return _shopView30().replace('<div class="tabs">','<div class="row" style="margin-bottom:12px"><button class="btn soft small" onclick="shoppingMode()">🛒 Shopping mode</button><button class="btn ghost small" onclick="openReceiptScan()">▧ Scan receipt</button><button class="btn ghost small" onclick="go(\'budget\')">◉ Budget</button></div><div class="tabs">')};
-const _render30=render;render=function(){_render30();let nav=document.getElementById('nav');if(appMode==='kitchen'){[['cookable','✨ What can I cook?'],['budget','◉ Budget']].forEach(([v,t])=>{let b=nav.querySelector(`[data-view="${v}"]`);if(b){b.style.display='';b.classList.toggle('active',view===v)}});if(view==='cookable')document.getElementById('main').innerHTML=cookableView();if(view==='budget')document.getElementById('main').innerHTML=budgetView()}else nav.querySelectorAll('[data-view="cookable"],[data-view="budget"]').forEach(b=>b.style.display='none')};
+const _render30=render;render=function(){_render30();let nav=document.getElementById('nav');if(appMode==='kitchen'){[['cookable','✨ What can I cook?'],['budget','◉ Budget']].forEach(([v,t])=>{let b=nav.querySelector(`[data-view="${v}"]`);if(b){b.style.display='';b.classList.toggle('active',view===v)}});if(view==='cookable')document.getElementById('main').innerHTML=cookableView();if(view==='budget')document.getElementById('main').innerHTML=budgetView()}else{nav.querySelector('[data-view="cookable"]').style.display='none';let b=nav.querySelector('[data-view="budget"]');if(b){b.style.display='';b.textContent='◉ Budget';b.classList.toggle('active',view==='budget')}}};
 function dragRecipe(e,id){e.dataTransfer.setData('text/plain',id)}function dropRecipe(e,day,slot){e.preventDefault();let id=e.dataTransfer.getData('text/plain'),m=mealById(id);if(!m)return;db.plan[day]??={};db.plan[day][slot]={mealId:id,servings:m.servings||2};save();render()}
 if(!document.getElementById('cookOverlay')){let o=document.createElement('div');o.id='cookOverlay';o.className='cook-overlay';document.body.append(o)}
 </script>
@@ -1289,7 +1303,7 @@ const MOBILE_ICONS={
  shop:'<svg viewBox="0 0 24 24"><circle cx="10" cy="20" r="1"/><circle cx="18" cy="20" r="1"/><path d="M2 3h2l3 13h12l3-10H5"/></svg>'
 };
 const MOBILE_NAV_KITCHEN=[['home','⌂','Home'],['meals','♡','Recipes'],['plan','▦','Plan'],['kitchen','◫','Pantry'],['shop','🛒','Shop']];
-const MOBILE_NAV_CARE=[['home','⌂','Home'],['meals','✦','Essentials'],['kitchen','◫','Cupboard'],['shop','🧺','Restock']];
+const MOBILE_NAV_CARE=[['home','⌂','Home'],['meals','✦','Essentials'],['kitchen','◫','Cupboard'],['shop','🧺','Restock'],['budget','◉','Budget'],['history','↗','History']];
 function renderMobileNav(){
  const el=document.getElementById('mobileNav');if(!el)return;
  const items=appMode==='care'?MOBILE_NAV_CARE:MOBILE_NAV_KITCHEN;
@@ -1297,7 +1311,7 @@ function renderMobileNav(){
 }
 document.getElementById('mobileNav').addEventListener('click',e=>{let b=e.target.closest('[data-mobile-view]');if(b){go(b.dataset.mobileView);scrollTo({top:0,behavior:'instant'})}});
 function openMoreMenu(){
- const entries=appMode==='care'?[['home','Overview'],['meals','Essentials'],['kitchen','Supply cupboard'],['shop','Restock cart']]:[['home','Overview'],['meals','Recipes'],['plan','Meal planner'],['kitchen','Pantry & ingredients'],['shop','Shopping list'],['cookable','What can I cook?'],['budget','Budget'],['history','Shopping history']];
+ const entries=appMode==='care'?[['home','Overview'],['meals','Essentials'],['kitchen','Supply cupboard'],['shop','Restock cart'],['budget','Home Care budget'],['history','Shopping trip history']]:[['home','Overview'],['meals','Recipes'],['plan','Meal planner'],['kitchen','Pantry & ingredients'],['shop','Shopping list'],['cookable','What can I cook?'],['budget','Budget'],['history','Shopping history']];
  showModal('Explore House & Cart','<p class="smalltext">Everything for your home, in one place.</p><div class="quick-menu-grid">'+entries.map(([v,label])=>'<button type="button" class="quick-menu-item" onclick="closeModal();go(\''+v+'\');window.scrollTo(0,0)">'+label+' <span aria-hidden="true">›</span></button>').join('')+'</div><div class="quick-menu-tools"><button type="button" class="btn soft" onclick="closeModal();openCloudAccount()">☁ Account & sync</button><button type="button" class="btn ghost" onclick="exportData()">↓ Download backup</button><button type="button" class="btn ghost" onclick="closeModal();document.getElementById(\'importFile\').click()">↑ Import backup</button><button type="button" class="btn ghost" onclick="closeModal();restoreSafetySnapshot()">↶ Recovery snapshot</button></div>');
 }
 
@@ -1639,6 +1653,61 @@ function scheduleCareRestockCleanup(){
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)purgeExpiredCareRestock()});
 window.addEventListener('focus',()=>purgeExpiredCareRestock());
 purgeExpiredCareRestock();
+
+</script>
+<script>
+
+function careMonthBudget(month=currentBudgetMonth()){
+ db.settings.careMonthlyBudgets??={};
+ if(!Object.prototype.hasOwnProperty.call(db.settings.careMonthlyBudgets,month))db.settings.careMonthlyBudgets[month]=Number(db.settings.careBudget)||100;
+ return Number(db.settings.careMonthlyBudgets[month])||0;
+}
+function careMonthSpent(month=currentBudgetMonth()){return db.cleaningHistory.filter(x=>String(x.date||'').slice(0,7)===month).reduce((sum,x)=>sum+(Number(x.total)||0),0)}
+function careTripMonths(){return [...new Set([currentBudgetMonth(),...db.cleaningHistory.map(t=>String(t.date||'').slice(0,7)).filter(x=>/^\d{4}-\d{2}$/.test(x))])].sort().reverse()}
+function careHistoryView(){
+ const trips=db.cleaningHistory.slice().sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
+ const sum=trips.reduce((v,x)=>v+Number(x.total||0),0);
+ const cards=trips.map(trip=>{
+  const items=(trip.items||[]).map(x=>typeof x==='string'?x:x.name).filter(Boolean);
+  return '<article class="card care-trip-card"><div class="care-trip-head"><div><b>'+esc(trip.store||'Shopping trip')+'</b><p class="smalltext">'+esc(trip.date||'')+' · '+items.length+' item'+(items.length===1?'':'s')+'</p></div><strong class="care-trip-price">'+money(trip.total)+'</strong></div>'+(items.length?'<p class="smalltext">'+esc(items.join(' · '))+'</p>':'')+(trip.notes?'<details><summary class="smalltext">Trip notes</summary><p class="smalltext">'+esc(trip.notes)+'</p></details>':'')+'<div class="care-trip-actions"><button type="button" class="btn soft small" onclick="openCareTrip(\''+trip.id+'\')">Edit trip</button><button type="button" class="btn danger small" onclick="deleteCareTrip(\''+trip.id+'\')">Delete</button></div></article>';
+ }).join('');
+ return '<div class="hero"><div><div class="eyebrow">Home Care · Spending journal</div><h1>Shopping history</h1><p class="sub">Log every trip, whatever the store. Keep totals, purchased items and notes in one place.</p></div><button class="btn green" onclick="openCareTrip()">＋ Log shopping trip</button></div><div class="grid"><div class="card span4 stat"><span>Trips recorded</span><strong>'+trips.length+'</strong><span>Across all places</span></div><div class="card span4 stat"><span>Total recorded</span><strong>'+money(sum)+'</strong><span>Since you started tracking</span></div><div class="card span4 stat"><span>Spent this month</span><strong>'+money(careMonthSpent())+'</strong><span>'+esc(budgetMonthLabel(currentBudgetMonth()))+'</span></div></div><div class="care-trip-list">'+(cards||'<div class="empty">Your Home Care trip history is empty. Add a trip to start tracking places and spending.</div>')+'</div>';
+}
+function openCareTrip(id=''){
+ const existing=id?db.cleaningHistory.find(x=>x.id===id):null;
+ if(id&&!existing)return;
+ const newItems=db.cleaningShopping.filter(x=>x.checked&&!x.loggedTripId).map(x=>x.name);
+ const trip=existing||{store:'',date:dateKey(new Date()),total:'',items:newItems,notes:''};
+ const items=(trip.items||[]).map(x=>typeof x==='string'?x:x.name).filter(Boolean);
+ const body='<form id="careTripForm"><div class="two"><div class="field"><label for="careTripStore">Store or place</label><input id="careTripStore" name="store" maxlength="100" required placeholder="e.g. Carrefour, Leroy Merlin, local market" value="'+esc(trip.store||'')+'"></div><div class="field"><label>Date of trip</label><input type="date" name="date" required value="'+esc(trip.date||dateKey(new Date()))+'"></div><div class="field"><label>Total spent (€)</label><input name="total" type="number" min="0" step=".01" required value="'+esc(trip.total??'')+'" placeholder="0.00"></div></div><div class="field"><label>Purchased items (one per line, optional)</label><textarea name="items" rows="5" placeholder="Laundry detergent\nBin bags\nCleaning cloths">'+esc(items.join('\n'))+'</textarea></div><div class="field"><label>Notes (optional)</label><textarea name="notes" rows="3" placeholder="Receipt details, location or reminder">'+esc(trip.notes||'')+'</textarea></div><p class="smalltext">Trip records are separate from your restock checklist and are retained after checked items automatically disappear.</p><div class="row"><button type="submit" class="btn green">'+(id?'Save changes':'Save shopping trip')+'</button><button type="button" class="btn ghost" onclick="closeModal()">Cancel</button></div></form>';
+ showModal(id?'Edit shopping trip':'Log a shopping trip',body);
+ document.getElementById('careTripForm').onsubmit=e=>{
+  e.preventDefault();const form=e.target,total=Number(form.elements.total.value),store=form.elements.store.value.trim();
+  if(!store||!Number.isFinite(total)||total<0){alert('Enter a place and a valid total.');return}
+  const record={id:id||uid(),store,date:form.elements.date.value,total,items:form.elements.items.value.split('\n').map(x=>x.trim()).filter(Boolean),notes:form.elements.notes.value.trim(),createdAt:existing?.createdAt||new Date().toISOString()};
+  if(id)db.cleaningHistory[db.cleaningHistory.findIndex(x=>x.id===id)]=record;
+  else{
+   db.cleaningHistory.unshift(record);
+   for(const row of db.cleaningShopping)if(row.checked&&!row.loggedTripId)row.loggedTripId=record.id;
+  }
+  save();closeModal();render();
+ };
+}
+function deleteCareTrip(id){
+ const item=db.cleaningHistory.find(x=>x.id===id);if(!item)return;
+ if(!confirm('Delete the shopping trip at '+item.store+' on '+item.date+'? This cannot be undone.'))return;
+ db.cleaningHistory=db.cleaningHistory.filter(x=>x.id!==id);
+ for(const row of db.cleaningShopping)if(row.loggedTripId===id)delete row.loggedTripId;
+ save();render();
+}
+function careBudgetView(){
+ const month=window.careBudgetMonth||currentBudgetMonth(),target=careMonthBudget(month),spent=careMonthSpent(month),left=target-spent;
+ const monthTrips=db.cleaningHistory.filter(x=>String(x.date||'').slice(0,7)===month);
+ const places=new Map();
+ for(const x of monthTrips){const key=x.store||'Other store',entry=places.get(key)||{total:0,count:0};entry.total+=Number(x.total)||0;entry.count++;places.set(key,entry)}
+ const placeRows=[...places].sort((a,b)=>b[1].total-a[1].total).map(([name,val])=>'<div class="care-place-row"><span class="grow"><b>'+esc(name)+'</b><small>'+val.count+' trip'+(val.count===1?'':'s')+'</small></span><strong>'+money(val.total)+'</strong></div>').join('');
+ return '<div class="hero"><div><div class="eyebrow">Home Care · Spending</div><h1>Household budget</h1><p class="sub">Separate from your Kitchen budget. Record visits to different places and see where your Home Care money goes.</p></div><button type="button" class="btn green" onclick="openCareTrip()">＋ Log a trip</button></div><div class="card care-budget-toolbar"><div class="field"><label>Budget month</label><input type="month" aria-label="Choose Home Care budget month" value="'+esc(month)+'" onchange="window.careBudgetMonth=this.value;render()"></div><div class="field"><label>Spending limit for '+esc(budgetMonthLabel(month))+'</label><input type="number" min="0" step=".01" value="'+target+'" onchange="db.settings.careMonthlyBudgets[\''+month+'\']=Math.max(0,Number(this.value)||0);save();render()"></div></div><div class="grid care-budget-stats"><div class="card span4 stat"><span>Monthly budget</span><strong>'+money(target)+'</strong></div><div class="card span4 stat"><span>Spent so far</span><strong>'+money(spent)+'</strong></div><div class="card span4 stat"><span>'+(left>=0?'Remaining':'Over budget')+'</span><strong>'+money(Math.abs(left))+'</strong></div></div><div class="card care-budget-breakdown"><div class="sectionhead"><h2>By store · '+esc(budgetMonthLabel(month))+'</h2><span class="badge">'+monthTrips.length+' trips</span></div><div class="progress"><i style="width:'+Math.min(100,target?spent/target*100:(spent?100:0))+'%"></i></div>'+(placeRows||'<div class="empty">No trips recorded for this month.</div>')+'<div class="care-budget-actions"><button class="btn soft small" onclick="go(\'history\')">View all trips →</button></div></div>';
+}
 
 </script>
 </body></html>
