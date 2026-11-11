@@ -459,6 +459,7 @@ body{
 .care-cat-error{border:1px solid #EEC7C0;background:#FDF0ED;padding:9px;border-radius:9px;color:#963C33;font-size:12px}
 .care-cat-error[hidden]{display:none}
 @media(max-width:530px){.care-cat-edit-row{flex-wrap:wrap}.care-cat-edit-main{flex:1 1 100%}.care-cat-edit-row .btn{flex:1}.care-cat-add{flex-wrap:wrap}.care-cat-add input{flex:1 1 100%}}
+.care-item-tags{display:flex;flex-wrap:wrap;gap:3px;margin-top:5px}.care-restock-line{align-items:center}.care-restock-emoji{font-size:21px}.care-restock-line .grow{min-width:0}.care-restock-line .check{width:21px;height:21px;accent-color:#26323A}.care-restock-line .btn{min-height:36px}
 </style>
 </head>
 <body><div class="app">
@@ -1539,6 +1540,105 @@ function openEssentialEditor(id=''){
   save();closeModal();render();
  };
 }
+
+</script>
+<script>
+
+function cleanInventoryRow(x){
+ const cats=careCategoryBadges(x);
+ return '<div class="listline supply-row"><span class="supply-emoji">'+cleanEmoji(x.name)+'</span><div class="supply-info"><b>'+esc(x.name)+'</b><small>'+x.qty+' '+esc(x.unit)+' · restock at '+x.threshold+'</small><div class="care-item-tags">'+cats+'</div></div><div class="supply-actions"><span class="badge '+(x.qty<=x.threshold?'orange':'gray')+'">'+(x.qty<=x.threshold?'Low':'In stock')+'</span><button class="btn soft small" onclick="openCleanProduct(\''+x.id+'\')">Update</button></div></div>';
+}
+function cleanInventoryView(){
+ return '<div class="hero"><div><div class="eyebrow">Home Care stock</div><h1>Supply cupboard</h1><p class="sub">Organise each product in multiple categories and keep accurate stock levels.</p></div><div class="row"><button class="btn soft" onclick="openCareCategoryManager()">⚙ Categories</button><button class="btn green" onclick="openCleanProduct()">＋ Add product</button></div></div><div class="card"><div class="sectionhead"><h2>Your products</h2><span class="badge">'+db.cleaningInventory.length+' tracked</span></div>'+(db.cleaningInventory.map(cleanInventoryRow).join('')||'<div class="empty">No products tracked yet. Add one above.</div>')+'</div>';
+}
+function trackEssential(id){
+ const essential=db.cleaningEssentials.find(x=>x.id===id);if(!essential)return;
+ if(db.cleaningInventory.some(x=>x.essentialId===id)){go('kitchen');return}
+ const item=syncCareCategoryFields({id:uid(),essentialId:id,name:essential.name,qty:2,threshold:1,unit:'pack'},categoriesOf(essential));
+ db.cleaningInventory.push(item);save();render();
+}
+function openCleanProduct(id=''){
+ const existing=id?db.cleaningInventory.find(x=>x.id===id):null;
+ const item=existing||{name:'',categories:[],qty:1,threshold:1,unit:'bottle',essentialId:''};
+ if(id&&!existing)return;
+ const options=db.cleaningEssentials.map(x=>'<option value="'+esc(x.name)+'"></option>').join('');
+ const body='<form id="cleanForm"><div class="field"><label>Product</label><input name="name" required list="cleanNames" value="'+esc(item.name)+'" placeholder="e.g. Dishwashing liquid"><datalist id="cleanNames">'+options+'</datalist></div><div class="field"><div class="sectionhead"><label>Categories (select multiple)</label><button type="button" class="btn soft small" onclick="openCareCategoryManager()">Manage</button></div>'+careCategoryOptions('careStockCats',item)+'</div><div class="two"><div class="field"><label>Unit</label><input name="unit" value="'+esc(item.unit)+'" placeholder="bottle, pack…"></div><div class="field"><label>Quantity you have</label><input name="qty" type="number" min="0" step="any" value="'+item.qty+'" required></div><div class="field"><label>Low-stock threshold</label><input name="threshold" type="number" min="0" step="any" value="'+item.threshold+'" required></div></div><p class="smalltext">When quantity is low, the product is offered for restocking. Checked purchases disappear from Restock two hours after purchase.</p><div class="row"><button type="submit" class="btn green">Save product</button>'+(id?'<button type="button" class="btn danger" onclick="deleteCleanProduct(\''+id+'\')">Delete</button>':'')+'</div></form>';
+ showModal(id?'Update supply cupboard':'Add a product',body);
+ const form=document.getElementById('cleanForm');
+ form.elements.name.addEventListener('change',()=>{
+  if(id)return;
+  const essential=db.cleaningEssentials.find(x=>norm(x.name)===norm(form.elements.name.value));
+  if(essential){const chosen=categoriesOf(essential);form.querySelectorAll('input[name="careStockCats"]').forEach(ch=>{ch.checked=chosen.includes(ch.value)})}
+ });
+ form.onsubmit=e=>{
+  e.preventDefault();const name=form.elements.name.value.trim(),essential=db.cleaningEssentials.find(x=>norm(x.name)===norm(name));
+  const categories=careCheckedCategories(form,'careStockCats');
+  const obj=syncCareCategoryFields({id:id||uid(),essentialId:essential?.id||'',name,unit:form.elements.unit.value.trim()||'unit',qty:Number(form.elements.qty.value),threshold:Number(form.elements.threshold.value)},categories);
+  if(!Number.isFinite(obj.qty)||obj.qty<0||!Number.isFinite(obj.threshold)||obj.threshold<0){alert('Enter valid non-negative stock quantities.');return}
+  if(id)db.cleaningInventory[db.cleaningInventory.findIndex(x=>x.id===id)]=obj;
+  else db.cleaningInventory.push(obj);
+  autoRestock();save();closeModal();render();
+ };
+}
+function autoRestock(){
+ for(const item of db.cleaningInventory){
+  const existing=db.cleaningShopping.find(x=>x.inventoryId===item.id);
+  if(item.qty<=item.threshold&&!existing){
+   db.cleaningShopping.push(syncCareCategoryFields({id:uid(),inventoryId:item.id,name:item.name,qty:1,unit:item.unit,checked:false,auto:true},categoriesOf(item)));
+  }else if(existing&&!existing.checked){
+   existing.name=item.name;existing.unit=item.unit;syncCareCategoryFields(existing,categoriesOf(item));
+   if(item.qty>item.threshold&&existing.auto)db.cleaningShopping=db.cleaningShopping.filter(x=>x.id!==existing.id);
+  }
+ }
+}
+function addCleanManual(){
+ const formBody='<form id="cleanAddForm"><div class="field"><label>Product to restock</label><input name="name" required maxlength="90" placeholder="e.g. Sponges"></div><div class="field"><label>Categories</label>'+careCategoryOptions('careRestockCats',{categories:[]})+'</div><button type="submit" class="btn green">Add to cart</button></form>';
+ showModal('Add to Home Care restock',formBody);
+ document.getElementById('cleanAddForm').onsubmit=e=>{
+  e.preventDefault();const form=e.target,name=form.elements.name.value.trim();
+  db.cleaningShopping.push(syncCareCategoryFields({id:uid(),name,qty:1,checked:false,auto:false},careCheckedCategories(form,'careRestockCats')));
+  save();closeModal();render();
+ };
+}
+function cleanShopView(){
+ const items=db.cleaningShopping;
+ const remaining=items.filter(x=>!x.checked).length,bought=items.filter(x=>x.checked).length;
+ const rows=items.map(x=>{
+  const caption=x.checked?'Bought · automatically clears 2 hours after purchase':(x.auto?'Added automatically':'Added manually');
+  return '<div class="listline care-restock-line"><input class="check" type="checkbox" aria-label="Mark '+esc(x.name)+' as bought" '+(x.checked?'checked':'')+' onchange="toggleCleanShop(\''+x.id+'\',this.checked)"><span class="care-restock-emoji">'+cleanEmoji(x.name)+'</span><div class="grow '+(x.checked?'strike':'')+'"><b>'+esc(x.name)+'</b><small>'+caption+'</small><div class="care-item-tags">'+careCategoryBadges(x)+'</div></div><button type="button" class="btn danger small" aria-label="Remove '+esc(x.name)+'" onclick="removeCleanShop(\''+x.id+'\')">×</button></div>';
+ }).join('');
+ return '<div class="hero"><div><div class="eyebrow">Home Care · Restocking</div><h1>Restock cart</h1><p class="sub">'+remaining+' still needed · '+bought+' purchased. Checked items clear automatically after two hours.</p></div><div class="row"><button class="btn soft" onclick="openCareTrip()">＋ Log shopping trip</button><button class="btn green" onclick="addCleanManual()">＋ Add item</button></div></div><div class="card"><div class="sectionhead"><h2>Shopping checklist</h2><span class="badge">'+items.length+' items</span></div>'+(rows||'<div class="empty">All stocked up. Your Home Care restock list is empty.</div>')+'<p class="smalltext" style="margin:12px 0 0">Tick purchased items to credit one unit to the cupboard. You can undo a tick before it expires. Log a trip to keep a spending record, even after items disappear from this list.</p></div>';
+}
+function toggleCleanShop(id,value){
+ const item=db.cleaningShopping.find(x=>x.id===id);if(!item||item.checked===value)return;
+ const inventory=db.cleaningInventory.find(x=>x.id===item.inventoryId);
+ if(value){
+  item.checked=true;item.checkedAt=new Date().toISOString();
+  if(inventory){inventory.qty=Number(inventory.qty||0)+Number(item.qty||1);item.stockCredited=true}
+ }else{
+  item.checked=false;delete item.checkedAt;
+  if(item.stockCredited&&inventory)inventory.qty=Math.max(0,Number(inventory.qty||0)-Number(item.qty||1));
+  delete item.stockCredited;
+ }
+ save();render();scheduleCareRestockCleanup();
+}
+let careRestockCleanupTimer=null;
+function purgeExpiredCareRestock(now=Date.now()){
+ const before=db.cleaningShopping.length;
+ db.cleaningShopping=db.cleaningShopping.filter(x=>!x.checked||!Number.isFinite(Date.parse(x.checkedAt||''))||now-Date.parse(x.checkedAt)<CARE_RESTOCK_EXPIRE_MS);
+ const removed=before-db.cleaningShopping.length;
+ if(removed){save();render()}
+ scheduleCareRestockCleanup();
+ return removed;
+}
+function scheduleCareRestockCleanup(){
+ clearTimeout(careRestockCleanupTimer);
+ const deadlines=db.cleaningShopping.filter(x=>x.checked&&Number.isFinite(Date.parse(x.checkedAt||''))).map(x=>Date.parse(x.checkedAt)+CARE_RESTOCK_EXPIRE_MS);
+ if(deadlines.length)careRestockCleanupTimer=setTimeout(()=>purgeExpiredCareRestock(),Math.max(50,Math.min(2147483647,Math.min(...deadlines)-Date.now()+50)));
+}
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)purgeExpiredCareRestock()});
+window.addEventListener('focus',()=>purgeExpiredCareRestock());
+purgeExpiredCareRestock();
 
 </script>
 </body></html>
