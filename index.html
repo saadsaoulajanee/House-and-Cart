@@ -568,6 +568,9 @@ function comparableCloudPayload(payload){
   // Category membership, not the order of checkboxes, is the meaningful choice.
   row.categories=[...new Map(row.categories.filter(x=>typeof x==='string'&&x.trim()).map(x=>[norm(x),x.trim()])).values()].sort((a,b)=>norm(a).localeCompare(norm(b)));
   row.category=row.categories[0]||'Other';
+  // Purchase timestamps drive cleanup, but are not separate user data edits.
+  // Two devices can timestamp an already-checked item differently during migration.
+  delete row.checkedAt;
  }
  for(const row of rows)for(const cat of row.categories)
   if(!settings.careCategories.some(x=>norm(x)===norm(cat)))settings.careCategories.push(cat);
@@ -575,17 +578,7 @@ function comparableCloudPayload(payload){
  return p;
 }
 function compareCloudPayloadPair(local,remote){
- const l=comparableCloudPayload(local),r=comparableCloudPayload(remote);
- const localShopping=new Map((l.cleaningShopping||[]).map(x=>[x.id,x]));
- for(const ri of r.cleaningShopping||[]){
-  const li=localShopping.get(ri.id);
-  if(li?.checked&&ri.checked&&(!li.checkedAt||!ri.checkedAt)){
-   // The older format didn't timestamp already-checked purchases.
-   // This is a migration-only difference, not a new purchase.
-   delete li.checkedAt;delete ri.checkedAt;
-  }
- }
- return {localText:stableJson(l),remoteText:stableJson(r)};
+ return {localText:stableJson(comparableCloudPayload(local)),remoteText:stableJson(comparableCloudPayload(remote))};
 }
 async function syncFingerprint(text){
  if(!window.crypto?.subtle)return 'text:'+text;
@@ -664,7 +657,7 @@ async function syncNow(mode='both'){
   else if(remoteText===localText){
    // Values match, but an older cloud schema may lack category fields or purchase timestamps.
    // Upgrade that remote format without a conflict prompt, so the saved baseline stays consistent.
-   action=stableJson(comparableCloudPayload(remote.payload))===stableJson(comparableCloudPayload(local))?'none':'upload';
+   action=stableJson(remote.payload)===stableJson(local)?'none':'upload';
   }
   else if(!baseline)action=meaningfulHomeData(local)?'choose':'download';
   else if(remoteHash===baseline)action='upload';
