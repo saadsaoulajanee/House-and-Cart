@@ -1640,11 +1640,11 @@ function addManualItem(){
 }
 function addExtraPurchaseRow(){
  let host=document.getElementById('extraPurchases');if(!host)return;
- let id=uid(),opts=db.ingredients.slice().sort((a,b)=>a.name.localeCompare(b.name)).map(ing=>`<option value="${ing.id}">${esc(ing.name)}</option>`).join('');
+ let id=uid();
  let row=document.createElement('div');row.className='extra-purchase-row';row.style.cssText='border:1px solid var(--line);border-radius:12px;padding:12px;margin:10px 0;background:#fffdf9';
  row.innerHTML=`<div class="row" style="justify-content:space-between;align-items:center"><b>Extra item</b><button type="button" class="btn danger small" aria-label="Remove extra purchase" onclick="this.closest('.extra-purchase-row').remove()">×</button></div>
- <div class="field"><label>What did you buy?</label><input class="extra-name" required placeholder="e.g. Strawberries"></div>
- <div class="field"><label>Link to pantry ingredient (optional)</label><select class="extra-ingredient"><option value="">Don't add to pantry</option>${opts}</select></div>
+ <div class="field"><label>What did you buy?</label>${freeTextPickerMarkup('extraName','Search or type a purchased item…',db.ingredients,'','extra-name-picker','extra-name')}</div>
+ <div class="field"><label>Link to pantry ingredient (optional)</label>${pickerMarkup('extraIngredient_'+id,'Search ingredient library…',db.ingredients.slice().sort((a,b)=>a.name.localeCompare(b.name)),'','extra-ingredient',true)}</div>
  <div class="two">
   <div class="field"><label>Quantity bought</label><input class="extra-qty" type="number" min="0" step="any" placeholder="e.g. 500"></div>
   <div class="field"><label>Unit</label><input class="extra-unit" placeholder="g, kg, ml, piece"></div>
@@ -1654,8 +1654,9 @@ function addExtraPurchaseRow(){
   <div class="field"><label>Price (€)</label><input class="extra-price" type="number" min="0" step=".01" placeholder="0.00"></div>
  </div>`;
  host.appendChild(row);
- let sel=row.querySelector('.extra-ingredient');
+ let sel=row.querySelector('select.extra-ingredient');
  sel.addEventListener('change',()=>{let ing=ingById(sel.value);if(ing){row.querySelector('.extra-name').value=ing.name;if(!row.querySelector('.extra-unit').value)row.querySelector('.extra-unit').value=ing.unit||'';row.querySelector('.extra-category').value=CATS.includes(ing.category)?ing.category:row.querySelector('.extra-category').value;}});
+ row.querySelector('.extra-name').addEventListener('change',()=>{const name=row.querySelector('.extra-name').value;const ing=db.ingredients.find(x=>norm(x.name)===norm(name));if(ing){sel.value=ing.id;sel.dispatchEvent(new Event('change',{bubbles:true}))}});
  row.querySelector('.extra-name').focus();
 }
 function finishShopping(){
@@ -1670,7 +1671,7 @@ function finishShopping(){
   let unit=x.unit||(guess?.unit||'');
   return `<div class="purchase-row" style="border:1px solid var(--line);border-radius:12px;padding:12px;margin:10px 0;background:#fffdf9">
    <div class="row" style="justify-content:space-between;align-items:center"><b>${esc(x.name)}</b><span class="badge">${x.source==='plan'?'Meal plan':x.source==='manual'?'Extra purchase':x.source==='spice-auto'?'Spice restock':'Shopping item'}</span></div>
-   <div class="field"><label>Save to pantry ingredient</label><select name="ingredient_${i}"><option value="">Do not add to pantry</option>${db.ingredients.slice().sort((a,b)=>a.name.localeCompare(b.name)).map(ing=>`<option value="${ing.id}" ${(guess?.id===ing.id)?'selected':''}>${esc(ing.name)}</option>`).join('')}</select></div>
+   <div class="field"><label>Save to pantry ingredient (optional)</label>${pickerMarkup('ingredient_'+i,'Search an ingredient to add to pantry…',db.ingredients.slice().sort((a,b)=>a.name.localeCompare(b.name)),guess?.id||'','purchase-ingredient-picker',true)}<p class="smalltext">Leave blank if you don't want to add this item to pantry.</p></div>
    <div class="two purchase-quantity" id="purchaseQty_${i}" style="${spice?'display:none':''}">
     <div class="field"><label>Actually bought</label><input name="qty_${i}" type="number" min="0" step="any" value="${qty}" placeholder="e.g. 1000"></div>
     <div class="field"><label>Unit</label><input name="unit_${i}" value="${esc(unit)}" placeholder="g, kg, ml, piece…"></div>
