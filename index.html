@@ -489,7 +489,7 @@ body{
 </style>
 </head>
 <body><div class="app">
-<header class="top"><div class="brand"><img class="logo brand-logo" src="./icon-192.png?v=3.7.1" width="48" height="48" alt="House & Cart icon"><div class="brand-copy"><div class="brand-name-row"><span style="font-family:Georgia,serif;font-size:27px;font-weight:500;letter-spacing:-1px">House &amp; Cart</span><span class="version-tag" id="appVersion" title="House & Cart app version">v3.8.1</span></div><div class="smalltext" style="letter-spacing:2px;text-transform:uppercase;font-size:9px">Your everyday home companion</div></div></div><div class="top-actions"><span class="pill" id="saveState">Saved on this device</span><button class="btn soft small" onclick="exportData()">Export backup</button><button class="btn ghost small" onclick="document.getElementById('importFile').click()">Import</button><button class="btn green small" onclick="openCloudAccount()">Account & sync</button><input id="importFile" type="file" accept=".json,application/json" hidden></div><button class="mobile-menu-button" type="button" aria-label="Open app menu" onclick="openMoreMenu()">☰ <span>Menu</span></button></header>
+<header class="top"><div class="brand"><img class="logo brand-logo" src="./icon-192.png?v=3.7.1" width="48" height="48" alt="House & Cart icon"><div class="brand-copy"><div class="brand-name-row"><span style="font-family:Georgia,serif;font-size:27px;font-weight:500;letter-spacing:-1px">House &amp; Cart</span><span class="version-tag" id="appVersion" title="House & Cart app version">v3.8.2</span></div><div class="smalltext" style="letter-spacing:2px;text-transform:uppercase;font-size:9px">Your everyday home companion</div></div></div><div class="top-actions"><span class="pill" id="saveState">Saved on this device</span><button class="btn soft small" onclick="exportData()">Export backup</button><button class="btn ghost small" onclick="document.getElementById('importFile').click()">Import</button><button class="btn green small" onclick="openCloudAccount()">Account & sync</button><input id="importFile" type="file" accept=".json,application/json" hidden></div><button class="mobile-menu-button" type="button" aria-label="Open app menu" onclick="openMoreMenu()">☰ <span>Menu</span></button></header>
 <div class="row mode-row" style="justify-content:space-between;align-items:center;margin:8px 0 4px"><div class="tabs" style="margin:0"><button id="modeKitchen" class="active" onclick="setMode('kitchen')">🍋 Kitchen</button><button id="modeCare" onclick="setMode('care')">🧺 Home care</button></div><div class="cloud-status-bar" id="cloudStatusBar" data-state="local" role="status" aria-live="polite"><span class="cloud-status-dot" aria-hidden="true"></span><strong id="cloudStatusLabel">Saved on this device</strong></div><span class="smalltext" id="modeCaption">Recipes, ingredients & weekly rituals</span></div><nav class="nav" id="nav" aria-label="Main navigation"><button data-view="home" class="active">⌂ Overview</button><button data-view="meals">♡ Recipes</button><button data-view="plan">▦ Planner</button><button data-view="shop">🛒 Shopping</button><button data-view="kitchen">🥬 Pantry</button><button data-view="history">↗ History</button><button data-view="cookable" style="display:none">✨ What can I cook?</button><button data-view="budget" style="display:none">◉ Budget</button></nav>
 <main id="main" tabindex="-1"></main></div><nav id="mobileNav" class="mobile-bottom-nav" aria-label="Mobile navigation"></nav>
 <div class="modalback" id="modalback"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="modtitle" tabindex="-1"><div class="modalhead"><h2 id="modtitle">Edit</h2><button class="x" type="button" aria-label="Close dialog" onclick="closeModal()">✕</button></div><div id="modbody"></div></div></div>
@@ -564,16 +564,36 @@ function comparableCloudPayload(value){
  result.settings={currency:'EUR',store:'',budget:80,careBudget:100,careMonthlyBudgets:{},careCategories:[...new Set(CLEAN_ESSENTIALS.map(row=>row[1]))],...settings};
  if(!Array.isArray(result.settings.careCategories))result.settings.careCategories=[...new Set(CLEAN_ESSENTIALS.map(row=>row[1]))];
  if(!result.settings.careMonthlyBudgets||typeof result.settings.careMonthlyBudgets!=='object')result.settings.careMonthlyBudgets={};
+ // Default ingredients and essentials receive random IDs on every new device.
+ // Normalise only the comparison, never the stored records or uploaded payload.
+ const canonicalIds=new Map();
+ for(const item of result.ingredients){
+  if(item.custom===true)continue;
+  const idx=DEFAULT_ING.findIndex(row=>norm(row[0])===norm(item.name));
+  if(idx>=0&&item.id)canonicalIds.set(item.id,'builtin:ingredient:'+idx);
+ }
+ for(const item of result.cleaningEssentials){
+  const idx=CLEAN_ESSENTIALS.findIndex(row=>norm(row[0])===norm(item.name));
+  if(idx>=0&&item.id)canonicalIds.set(item.id,'builtin:essential:'+idx);
+ }
+ const rewriteIds=node=>{
+  if(Array.isArray(node))return node.map(rewriteIds);
+  if(node&&typeof node==='object'){for(const key of Object.keys(node))node[key]=rewriteIds(node[key]);return node}
+  return typeof node==='string'&&canonicalIds.has(node)?canonicalIds.get(node):node;
+ };
+ rewriteIds(result);
  for(const key of ['cleaningInventory','cleaningShopping','cleaningEssentials']){
   for(const item of result[key]){
-   if(!Array.isArray(item.categories))item.categories=item.category?[item.category]:[];
-   if(!item.category)item.category=item.categories[0]||'Other';
-   for(const cat of item.categories){
-    if(!result.settings.careCategories.some(x=>norm(x)===norm(cat)))result.settings.careCategories.push(cat);
-   }
+   const cats=Array.isArray(item.categories)?item.categories.slice():(item.category&&item.category!=='Other'?[item.category]:[]);
+   const unique=[...new Map(cats.filter(x=>typeof x==='string'&&x.trim()).map(x=>[norm(x),x.trim()])).values()];
+   item.categories=unique;
+   item.category=unique[0]||'Other';
+   for(const cat of unique)if(!result.settings.careCategories.some(x=>norm(x)===norm(cat)))result.settings.careCategories.push(cat);
    if(key==='cleaningShopping'&&!item.checked)delete item.checkedAt;
   }
  }
+ // Presentation-only category ordering must not trigger a cloud conflict.
+ result.settings.careCategories=[...new Map(result.settings.careCategories.map(x=>[norm(x),x])).values()].sort((a,b)=>norm(a).localeCompare(norm(b)));
  return result;
 }
 function comparableCloudText(payload){return stableJson(comparableCloudPayload(payload))}
