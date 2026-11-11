@@ -2184,7 +2184,8 @@ function autoRestock(){
  }
 }
 function addCleanManual(){
- const formBody='<form id="cleanAddForm"><div class="field"><label>Product to restock</label><input name="name" required maxlength="90" placeholder="e.g. Sponges"></div><div class="field"><label>Categories</label>'+careCategoryOptions('careRestockCats',{categories:[]})+'</div><button type="submit" class="btn green">Add to cart</button></form>';
+ const names=[...new Set([...db.cleaningEssentials.map(x=>x.name),...db.cleaningInventory.map(x=>x.name)])].sort((a,b)=>a.localeCompare(b));
+ const formBody='<form id="cleanAddForm"><div class="field"><label>Product to restock</label><input name="name" required maxlength="90" list="careRestockNames" placeholder="Search a product or enter a new one"><datalist id="careRestockNames">'+names.map(name=>'<option value="'+esc(name)+'"></option>').join('')+'</datalist></div><div class="field"><label>Categories</label>'+careCategoryOptions('careRestockCats',{categories:[]})+'</div><button type="submit" class="btn green">Add to cart</button></form>';
  showModal('Add to Home Care restock',formBody);
  document.getElementById('cleanAddForm').onsubmit=e=>{
   e.preventDefault();const form=e.target,name=form.elements.name.value.trim();
