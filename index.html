@@ -584,10 +584,22 @@ body{
  .supply-row .supply-actions .badge{order:0}
  .supply-row .supply-actions>.btn{order:2}
 }
+
+/* v3.9.2: consistent autocomplete dropdowns across Kitchen and Home Care */
+.app-autocomplete{position:relative;min-width:0}
+.app-autocomplete input{width:100%;min-width:0}
+.app-autocomplete-menu{display:none;position:absolute;top:calc(100% + 5px);left:0;right:0;z-index:80;max-height:min(275px,40vh);overflow-y:auto;overscroll-behavior:contain;background:var(--paper,#fffdf9);border:1px solid #d9e0d5;border-radius:13px;padding:5px;box-shadow:0 14px 34px #24332827}
+.app-autocomplete.autocomplete-open>.app-autocomplete-menu{display:block}
+.app-autocomplete-option{width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;text-align:left;background:transparent;border:0;border-radius:9px;padding:10px 12px;color:var(--ink);font-size:13px;min-height:42px;cursor:pointer}
+.app-autocomplete-option:hover,.app-autocomplete-option:focus-visible,.app-autocomplete-option.active{background:#f0f3eb;outline:none}
+.app-autocomplete-option .app-autocomplete-name{font-weight:650;min-width:0;overflow-wrap:anywhere}
+.app-autocomplete-option small{color:var(--muted);font-size:11px;white-space:nowrap;max-width:40%;overflow:hidden;text-overflow:ellipsis}
+.app-autocomplete-empty{font-size:12px;color:var(--muted);padding:12px;line-height:1.5}
+@media(max-width:600px){.app-autocomplete-option{min-height:46px;padding:12px}.app-autocomplete-menu{max-height:240px}}
 </style>
 </head>
 <body><div class="app">
-<header class="top"><div class="brand"><img class="logo brand-logo" src="./icon-192.png?v=3.7.1" width="48" height="48" alt="House & Cart icon"><div class="brand-copy"><div class="brand-name-row"><span style="font-family:Georgia,serif;font-size:27px;font-weight:500;letter-spacing:-1px">House &amp; Cart</span><span class="version-tag" id="appVersion" title="House & Cart app version">v3.9.1</span></div><div class="smalltext" style="letter-spacing:2px;text-transform:uppercase;font-size:9px">Your everyday home companion</div></div></div><div class="top-actions"><span class="pill" id="saveState">Saved on this device</span><button class="btn soft small" onclick="exportData()">Export backup</button><button class="btn ghost small" onclick="document.getElementById('importFile').click()">Import</button><button class="btn green small" onclick="openCloudAccount()">Account & sync</button><input id="importFile" type="file" accept=".json,application/json" hidden></div><button class="mobile-menu-button" type="button" aria-label="Open app menu" onclick="openMoreMenu()">☰ <span>Menu</span></button></header>
+<header class="top"><div class="brand"><img class="logo brand-logo" src="./icon-192.png?v=3.7.1" width="48" height="48" alt="House & Cart icon"><div class="brand-copy"><div class="brand-name-row"><span style="font-family:Georgia,serif;font-size:27px;font-weight:500;letter-spacing:-1px">House &amp; Cart</span><span class="version-tag" id="appVersion" title="House & Cart app version">v3.9.2</span></div><div class="smalltext" style="letter-spacing:2px;text-transform:uppercase;font-size:9px">Your everyday home companion</div></div></div><div class="top-actions"><span class="pill" id="saveState">Saved on this device</span><button class="btn soft small" onclick="exportData()">Export backup</button><button class="btn ghost small" onclick="document.getElementById('importFile').click()">Import</button><button class="btn green small" onclick="openCloudAccount()">Account & sync</button><input id="importFile" type="file" accept=".json,application/json" hidden></div><button class="mobile-menu-button" type="button" aria-label="Open app menu" onclick="openMoreMenu()">☰ <span>Menu</span></button></header>
 <div class="row mode-row" style="justify-content:space-between;align-items:center;margin:8px 0 4px"><div class="tabs" style="margin:0"><button id="modeKitchen" class="active" onclick="setMode('kitchen')">🍋 Kitchen</button><button id="modeCare" onclick="setMode('care')">🧺 Home care</button></div><div class="cloud-status-bar" id="cloudStatusBar" data-state="local" role="status" aria-live="polite"><span class="cloud-status-dot" aria-hidden="true"></span><strong id="cloudStatusLabel">Saved on this device</strong></div><span class="smalltext" id="modeCaption">Recipes, ingredients & weekly rituals</span></div><nav class="nav" id="nav" aria-label="Main navigation"><button data-view="home" class="active">⌂ Overview</button><button data-view="meals">♡ Recipes</button><button data-view="plan">▦ Planner</button><button data-view="shop">🛒 Shopping</button><button data-view="kitchen">🥬 Pantry</button><button data-view="history">↗ History</button><button data-view="cookable" style="display:none">✨ What can I cook?</button><button data-view="budget" style="display:none">◉ Budget</button></nav>
 <main id="main" tabindex="-1"></main></div><nav id="mobileNav" class="mobile-bottom-nav" aria-label="Mobile navigation"></nav>
 <div class="modalback" id="modalback"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="modtitle" tabindex="-1"><div class="modalhead"><h2 id="modtitle">Edit</h2><button class="x" type="button" aria-label="Close dialog" onclick="closeModal()">✕</button></div><div id="modbody"></div></div></div>
@@ -1272,6 +1284,121 @@ function versionSelectorMarkup(m,selectedId=''){
 function openRecipe(id,versionId=''){let m=mealById(id);if(!m)return;let recipe=resolveRecipe(m,versionId);let steps=recipe.steps?.length?recipe.steps:(recipe.notes||'').split(/\n+/).filter(Boolean);showModal('Recipe · '+m.name,`<div class="recipe-detail">${m.photo?`<img class="meal-photo" style="height:230px" src="${m.photo}" alt="${esc(m.name)}">`:''}<div class="row" style="justify-content:space-between;margin:13px 0"><span class="badge">${esc((Array.isArray(m.category)?m.category:[m.category||'Dinner']).join(' · '))}</span><span class="smalltext">⏱ ${m.time||'—'} min · 🍽 ${m.servings||1} servings</span></div><div class="recipe-title-and-favorite"><h1>${esc(m.name)}</h1><button type="button" class="btn soft recipe-favorite-button ${m.favorite?'is-favorite':''}" aria-label="${m.favorite?'Remove from':'Add to'} favorites: ${esc(m.name)}" title="${m.favorite?'Remove from favorites':'Add to favorites'}" aria-pressed="${!!m.favorite}" onclick="toggleRecipeFavorite('${m.id}',this)">${m.favorite?'♥':'♡'}</button></div>${versionSelectorMarkup(m,versionId)}${tagBadges(recipe.tags)?`<div class="recipe-tags">${tagBadges(recipe.tags)}</div>`:''}<div class="two"><section><h3>What you'll need</h3>${(recipe.ingredients||[]).map(x=>`<div class="listline"><span class="grow">${esc(ingById(x.ingredientId)?.name||'Ingredient')}</span><b>${isSpice(ingById(x.ingredientId))?'To taste':`${esc(formatQuantity(x.qty,x.unit))}`}</b></div>`).join('')||'<p class="smalltext">No ingredients added yet.</p>'}</section><section><h3>Cook along</h3><p class="smalltext">Tick each step as you go.</p><div id="recipeSteps">${steps.map((st,i)=>`<label class="recipe-step"><input type="checkbox" class="check"><span><b>Step ${i+1}</b><br>${esc(st)}</span></label>`).join('')||'<p class="smalltext">No steps added yet. Edit this recipe to add them.</p>'}</div></section></div>${recipe.notes?`<div class="card" style="margin-top:15px;background:#fbf2eb"><b>Kitchen notes</b><p>${esc(recipe.notes)}</p></div>`:''}<div class="row" style="margin-top:16px"><button class="btn green" onclick="closeModal();openMeal('${m.id}')">Edit recipe</button><button class="btn soft" onclick="quickPlan('${m.id}','${recipe.versionId}')">＋ Add to planner</button><button class="btn ghost" onclick="openVariantManager('${m.id}')">⚙ Manage variations</button></div></div>`)}
 function pickerMarkup(name,placeholder,items,selectedId='',cls=''){let selected=items.find(x=>x.id===selectedId);let listId='pick_'+uid().replace(/[^a-z0-9]/gi,'');return `<div class="search-picker ${cls}"><input type="search" list="${listId}" autocomplete="off" aria-label="${esc(placeholder)}" placeholder="${esc(placeholder)}" value="${esc(selected?.name||'')}" oninput="syncSearchPicker(this)" onchange="syncSearchPicker(this)" data-target="${listId}_value"><datalist id="${listId}">${items.map(x=>`<option value="${esc(x.name)}"></option>`).join('')}</datalist><select id="${listId}_value" name="${name}" class="${cls==='ingredient-picker'?'ing-choice':''}" ${cls==='ingredient-picker'?'onchange="toggleSpiceFields(this)"':''} required hidden><option value="">Choose…</option>${items.map(x=>`<option value="${x.id}" ${x.id===selectedId?'selected':''}>${esc(x.name)}</option>`).join('')}</select></div>`}
 function syncSearchPicker(input){let target=document.getElementById(input.dataset.target);if(!target)return;let datalist=input.list;if(datalist){datalist.replaceChildren();[...target.options].filter(o=>o.value&&fieldWordMatch(o.textContent,input.value)).slice(0,70).forEach(o=>{let option=document.createElement('option');option.value=o.textContent;datalist.append(option)})}let match=[...target.options].find(o=>o.value&&norm(o.textContent)===norm(input.value));let next=match?match.value:'';if(target.value!==next){target.value=next;target.dispatchEvent(new Event('change',{bubbles:true}))}input.setCustomValidity(input.value&&!match?'Choose an item from the suggestions, or clear the search.':'')}
+
+
+/* A single, app-styled autocomplete for all searchable datalist fields.
+   Native datalists have inconsistent Android rendering and do not reliably
+   open while typing. Keep the underlying input and hidden select unchanged. */
+function autocompleteEntries(input){
+ const target=input.dataset.target?document.getElementById(input.dataset.target):null;
+ if(target){
+  return [...target.options].filter(o=>o.value).map(o=>{
+   const ing=ingById(o.value);
+   return {value:o.textContent,label:o.textContent,detail:ing?.category||'',search:o.textContent+' '+(ing?.aliases||[]).join(' ')};
+  });
+ }
+ const list=document.getElementById(input.dataset.autocompleteList||'');
+ return list?[...list.options].map(o=>({value:o.value,label:o.value,detail:o.label&&o.label!==o.value?o.label:'',search:o.value})).filter(o=>o.value):[];
+}
+function autocompleteClose(input){
+ if(!input)return;
+ const host=input.closest('.app-autocomplete');
+ if(!host)return;
+ host.classList.remove('autocomplete-open');
+ input.setAttribute('aria-expanded','false');
+ input.removeAttribute('aria-activedescendant');
+ const panel=host.querySelector('.app-autocomplete-menu');
+ if(panel)panel.replaceChildren();
+}
+function autocompleteShow(input){
+ const host=input.closest('.app-autocomplete'),panel=host?.querySelector('.app-autocomplete-menu');
+ if(!panel)return;
+ const query=input.value.trim();
+ const matches=autocompleteEntries(input).filter(o=>!query||fieldWordMatch(o.search,query)).slice(0,35);
+ panel.replaceChildren();
+ if(!matches.length){
+  const empty=document.createElement('div');empty.className='app-autocomplete-empty';
+  empty.textContent=input.dataset.target?'No matching ingredients. Add it to your ingredient library first.':'No suggestions. You can still enter a new product name.';
+  panel.append(empty);
+ }else{
+  matches.forEach((entry,i)=>{
+   const button=document.createElement('button');button.type='button';button.className='app-autocomplete-option';button.setAttribute('role','option');
+   button.id=input.dataset.autocompleteId+'_opt_'+i;
+   const name=document.createElement('span');name.className='app-autocomplete-name';name.textContent=entry.label;
+   button.append(name);
+   if(entry.detail){const detail=document.createElement('small');detail.textContent=entry.detail;button.append(detail)}
+   button.addEventListener('pointerdown',e=>e.preventDefault());
+   button.addEventListener('click',()=>{
+    input.value=entry.value;
+    input.dispatchEvent(new Event('input',{bubbles:true}));
+    input.dispatchEvent(new Event('change',{bubbles:true}));
+    autocompleteClose(input);
+    input.focus({preventScroll:true});
+   });
+   panel.append(button);
+  });
+ }
+ host.classList.add('autocomplete-open');
+ input.setAttribute('aria-expanded','true');
+}
+function autocompleteInit(input){
+ if(!input||input.dataset.autocompleteReady)return;
+ const list=input.getAttribute('list');
+ if(!list)return;
+ input.dataset.autocompleteReady='1';
+ input.dataset.autocompleteList=list;
+ input.removeAttribute('list');
+ input.setAttribute('autocomplete','off');
+ input.setAttribute('aria-autocomplete','list');
+ input.setAttribute('aria-expanded','false');
+ const host=input.closest('.search-picker')||input.parentElement;
+ host.classList.add('app-autocomplete');
+ const panel=document.createElement('div');
+ panel.className='app-autocomplete-menu';panel.id='suggest_'+uid();
+ panel.setAttribute('role','listbox');
+ input.dataset.autocompleteId=panel.id;
+ input.setAttribute('aria-controls',panel.id);
+ host.append(panel);
+}
+document.addEventListener('focusin',e=>{
+ const input=e.target;
+ if(!(input instanceof HTMLInputElement))return;
+ if(input.hasAttribute('list'))autocompleteInit(input);
+ if(input.dataset.autocompleteReady)autocompleteShow(input);
+});
+document.addEventListener('input',e=>{
+ const input=e.target;
+ if(input instanceof HTMLInputElement&&input.dataset.autocompleteReady)autocompleteShow(input);
+});
+document.addEventListener('keydown',e=>{
+ const input=e.target;
+ if(!(input instanceof HTMLInputElement)||!input.dataset.autocompleteReady)return;
+ const host=input.closest('.app-autocomplete');
+ if(e.key==='Escape'){autocompleteClose(input);return}
+ if(e.key==='ArrowDown'&&host&&!host.classList.contains('autocomplete-open')){e.preventDefault();autocompleteShow(input);return}
+ const buttons=[...(host?.querySelectorAll('.app-autocomplete-option')||[])];
+ if(!buttons.length)return;
+ const selected=buttons.findIndex(b=>b.classList.contains('active'));
+ if(e.key==='ArrowDown'||e.key==='ArrowUp'){
+  e.preventDefault();
+  const next=e.key==='ArrowDown'?(selected+1)%buttons.length:(selected-1+buttons.length)%buttons.length;
+  buttons.forEach((b,i)=>{b.classList.toggle('active',i===next);b.setAttribute('aria-selected',String(i===next))});
+  input.setAttribute('aria-activedescendant',buttons[next].id);
+  buttons[next].scrollIntoView({block:'nearest'});
+ }else if(e.key==='Enter'&&selected>=0){
+  e.preventDefault();buttons[selected].click();
+ }
+});
+document.addEventListener('pointerdown',e=>{
+ document.querySelectorAll('.app-autocomplete.autocomplete-open').forEach(host=>{
+  if(!host.contains(e.target))autocompleteClose(host.querySelector('input[data-autocomplete-ready]'));
+ });
+});
+document.addEventListener('focusout',e=>{
+ const input=e.target;
+ if(!(input instanceof HTMLInputElement)||!input.dataset.autocompleteReady)return;
+ requestAnimationFrame(()=>{if(!input.closest('.app-autocomplete')?.contains(document.activeElement))autocompleteClose(input)});
+});
 
 function refreshIngredientPreviews(){
  document.querySelectorAll('#mealIngredients .ingredient-row,#variantIngredients .ingredient-row').forEach(row=>{
@@ -2026,7 +2153,7 @@ function openCleanProduct(id=''){
  const existing=id?db.cleaningInventory.find(x=>x.id===id):null;
  const item=existing||{name:'',categories:[],qty:1,threshold:1,unit:'bottle',essentialId:''};
  if(id&&!existing)return;
- const options=db.cleaningEssentials.map(x=>'<option value="'+esc(x.name)+'"></option>').join('');
+ const options=[...new Set([...db.cleaningEssentials.map(x=>x.name),...db.cleaningInventory.map(x=>x.name)])].sort((a,b)=>a.localeCompare(b)).map(name=>'<option value="'+esc(name)+'"></option>').join('');
  const body='<form id="cleanForm"><div class="field"><label>Product</label><input name="name" required list="cleanNames" value="'+esc(item.name)+'" placeholder="e.g. Dishwashing liquid"><datalist id="cleanNames">'+options+'</datalist></div><div class="field"><div class="sectionhead"><label>Categories (select multiple)</label><button type="button" class="btn soft small" onclick="openCareCategoryManager()">Manage</button></div>'+careCategoryOptions('careStockCats',item)+'</div><div class="two"><div class="field"><label>Unit</label><input name="unit" value="'+esc(item.unit)+'" placeholder="bottle, pack…"></div><div class="field"><label>Quantity you have</label><input name="qty" type="number" min="0" step="any" value="'+item.qty+'" required></div><div class="field"><label>Low-stock threshold</label><input name="threshold" type="number" min="0" step="any" value="'+item.threshold+'" required></div></div><p class="smalltext">When quantity is low, the product is offered for restocking. Checked purchases disappear from Restock two hours after purchase.</p><div class="row"><button type="submit" class="btn green">Save product</button>'+(id?'<button type="button" class="btn danger" onclick="deleteCleanProduct(\''+id+'\')">Delete</button>':'')+'</div></form>';
  showModal(id?'Update supply cupboard':'Add a product',body);
  const form=document.getElementById('cleanForm');
