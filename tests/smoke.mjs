@@ -9,7 +9,7 @@ await page.route('https://cdn.jsdelivr.net/npm/@supabase/**',route=>route.abort(
 try {
  await page.goto(origin,{waitUntil:'domcontentloaded'});
  await page.waitForSelector('#mobileNav button');
- assert.match(await page.locator('#appVersion').innerText(),/v3\.9\.0/);
+ assert.match(await page.locator('#appVersion').innerText(),/v3\.9\.1/);
  assert.match(await page.locator('.brand').innerText(),/House & Cart/);
  // The small version badge sits on the same baseline as the app name.
  assert.equal(await page.locator('.brand-name-row #appVersion').count(),1);
@@ -386,6 +386,7 @@ try {
  await testMockCloudSync(browser,origin);
  await testCloudRefreshGuards(browser,origin);
  await testCookingPantryAndLayout(browser,origin);
+ await testManualShoppingAndCareSteppers(browser,origin);
  assert.deepEqual(errors,[],'Browser JavaScript exceptions');
  console.log('PASS: Home Care multi-categories, timed restock removal, separate spending history/budget, icons and existing features');
 }finally{
@@ -728,5 +729,102 @@ async function testCookingPantryAndLayout(browser,origin){
   assert.equal(await catBox.evaluate(el=>getComputedStyle(el).overflowY),'auto');
   assert.deepEqual(faults,[],'No browser JS exceptions');
   console.log('PASS: weekly slot count, responsive cards, cooked planned/unplanned meals, version deductions, pantry steppers, scrollable categories');
+ }finally{await page.close()}
+}
+
+
+async function testManualShoppingAndCareSteppers(browser,origin){
+ const page=await browser.newPage({viewport:{width:390,height:844},deviceScaleFactor:2});
+ const faults=[];
+ page.on('pageerror',e=>faults.push(String(e)));
+ await page.route('https://cdn.jsdelivr.net/npm/@supabase/**',route=>route.abort());
+ try{
+  await page.goto(origin,{waitUntil:'domcontentloaded'});
+  await page.waitForSelector('#mobileNav button');
+  await page.evaluate(()=>{
+   const milk=db.ingredients.find(x=>x.name==='Milk');
+   db.inventory=[{id:'manual-milk-stock',ingredientId:milk.id,name:milk.name,category:milk.category,qty:2,unit:'l'}];
+   db.shopping=[];
+   save();render();
+  });
+  await page.locator('#mobileNav button[data-mobile-view="shop"]').click();
+  await page.getByRole('button',{name:/Add item/}).first().click();
+  const form=page.locator('#manualForm');
+  assert.equal(await form.isVisible(),true);
+  assert.equal(await form.locator('.search-picker input').getAttribute('list')!==null,true,'Search bar suggests library ingredients');
+  await form.locator('.search-picker input').fill('Milk');
+  assert.equal(await page.evaluate(()=>document.querySelector('#manualForm [name="ingredient"]').value===db.ingredients.find(i=>i.name==='Milk').id),true);
+  assert.match(await page.locator('#manualShoppingIngredientHint').innerText(),/Suggested unit: l/,'Existing pantry stock suggests unit');
+  assert.equal(await page.evaluate(()=>document.querySelector('#manualShoppingUnitHolder select').value),'l');
+  await page.locator('#manualShoppingQty').fill('1.5');
+  assert.match(await page.locator('#manualShoppingPreview').innerText(),/Add 1.5 L Milk/);
+  assert.match(await page.locator('#manualShoppingPreview').innerText(),/Currently in pantry: 2 L/);
+  await form.getByRole('button',{name:/Add to shopping list/}).click();
+  const milkItem=await page.evaluate(()=>db.shopping[0]);
+  assert.equal(milkItem.name,'Milk');
+  assert.equal(milkItem.qty,1.5);
+  assert.equal(milkItem.unit,'l');
+  assert.equal(milkItem.category,'Dairy & eggs');
+  assert.equal(milkItem.source,'manual');
+  assert.equal(await page.evaluate(()=>db.shopping[0].ingredientId===db.ingredients.find(i=>i.name==='Milk').id),true,'Manual shopping linked to pantry ingredient');
+  assert.match(await page.locator('.shop-item-row',{hasText:'Milk'}).innerText(),/1.5 L/);
+
+  // Switching ingredients chooses a fresh smart unit and persists edited quantities.
+  await page.getByRole('button',{name:/Add item/}).first().click();
+  await page.locator('#manualForm .search-picker input').fill('Cinnamon');
+  assert.equal(await page.evaluate(()=>document.querySelector('#manualShoppingUnitHolder select').value),'jar','Spices should default to jars');
+  await page.locator('#manualShoppingQty').fill('2');
+  await page.locator('#manualForm button[type="submit"]').click();
+  const spice=await page.evaluate(()=>db.shopping.find(x=>x.name==='Cinnamon'));
+  assert.equal(spice.qty,2);assert.equal(spice.unit,'jar');
+  assert.equal(spice.category,'Spices');
+
+  // Custom unit is allowed for unusual purchases.
+  await page.getByRole('button',{name:/Add item/}).first().click();
+  await page.locator('#manualForm .search-picker input').fill('Rice');
+  await page.locator('#manualShoppingUnitHolder .styled-select-trigger').click();
+  await page.locator('#manualShoppingUnitHolder .styled-select-option',{hasText:'Other · custom unit'}).click();
+  await page.locator('#manualShoppingUnitHolder .custom-unit').fill('sack');
+  await page.locator('#manualShoppingQty').fill('3');
+  assert.match(await page.locator('#manualShoppingPreview').innerText(),/3 sack Rice/);
+  await page.locator('#manualForm button[type="submit"]').click();
+  assert.equal(await page.evaluate(()=>db.shopping.find(x=>x.name==='Rice').unit),'sack');
+  await page.reload({waitUntil:'domcontentloaded'});
+  assert.equal(await page.evaluate(()=>db.shopping.length),3,'Shopping items survive refresh');
+  await page.locator('#mobileNav button[data-mobile-view="shop"]').click();
+  assert.equal(await page.locator('.shop-item-row').count(),3);
+
+  // Home Care -1 +1 buttons immediately adjust cupboard stock and Restock thresholds.
+  await page.locator('#modeCare').click();
+  await page.locator('#mobileNav button[data-mobile-view="kitchen"]').click();
+  await page.evaluate(()=>{
+   db.cleaningInventory=[{id:'home-care-bleach',name:'Bleach',qty:3,unit:'bottle',threshold:2,category:'Disinfection',categories:['Disinfection']}];
+   db.cleaningShopping=[];save();render();
+  });
+  const supply=page.locator('#careSupplyList .supply-row[data-supply-id="home-care-bleach"]');
+  assert.equal(await supply.count(),1);
+  assert.equal(await supply.locator('.care-supply-stepper').count(),1);
+  await supply.getByRole('button',{name:/Decrease Bleach/}).click();
+  assert.equal(await page.evaluate(()=>db.cleaningInventory[0].qty),2);
+  assert.equal(await page.evaluate(()=>db.cleaningShopping.filter(x=>x.inventoryId==='home-care-bleach').length),1,'Low stock adds to Restock');
+  assert.match(await supply.innerText(),/Low/);
+  await supply.getByRole('button',{name:/Decrease Bleach/}).click();
+  assert.equal(await page.evaluate(()=>db.cleaningInventory[0].qty),1);
+  assert.equal(await page.evaluate(()=>db.cleaningShopping.filter(x=>x.inventoryId==='home-care-bleach').length),1,'Repeated decreases must not duplicate Restock items');
+  await supply.getByRole('button',{name:/Increase Bleach/}).click();
+  await supply.getByRole('button',{name:/Increase Bleach/}).click();
+  assert.equal(await page.evaluate(()=>db.cleaningInventory[0].qty),3);
+  assert.equal(await page.evaluate(()=>db.cleaningShopping.filter(x=>x.inventoryId==='home-care-bleach').length),0,'Restocking above threshold clears only auto entries');
+  assert.match(await supply.innerText(),/In stock/);
+  await page.evaluate(()=>{db.cleaningInventory[0].qty=0;save();render()});
+  assert.equal(await supply.getByRole('button',{name:/Decrease Bleach/}).isDisabled(),true);
+  assert.equal(await page.evaluate(()=>adjustCareSupplyQuantity('home-care-bleach',-1)),false,'Cannot make negative quantities');
+  await page.locator('#mobileNav button[data-mobile-view="shop"]').click();
+  assert.equal(await page.locator('.care-restock-line').count(),0,'Restock changes visible on navigation');
+  await page.reload({waitUntil:'domcontentloaded'});
+  await page.locator('#modeCare').click();
+  assert.equal(await page.evaluate(()=>db.cleaningInventory[0].qty),0);
+  assert.deepEqual(faults,[],'No browser JavaScript exceptions');
+  console.log('PASS: manual shopping ingredient search, smart units and quantities, Home Care steppers, threshold automation');
  }finally{await page.close()}
 }
