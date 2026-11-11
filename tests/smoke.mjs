@@ -916,7 +916,7 @@ async function testStyledAutocompleteAcrossApp(browser,origin){
   assert.equal(await popup.isVisible(),true,'Extra purchased items also suggest ingredients');
   await popup.getByRole('option',{name:/Chickpeas/}).first().click();
   assert.equal(await extraName.inputValue(),'Chickpeas');
-  assert.equal(await page.evaluate(()=>document.querySelector('#extraPurchases .extra-ingredient').value===db.ingredients.find(x=>x.name==='Chickpeas').id),true);
+  assert.equal(await page.evaluate(()=>document.querySelector('#extraPurchases select.extra-ingredient').value===db.ingredients.find(x=>x.name==='Chickpeas').id),true);
   await page.locator('#modalback .x').click();
 
   // Home Care Cupboard: existing products suggested, categories filled,
