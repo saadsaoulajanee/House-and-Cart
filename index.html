@@ -584,10 +584,31 @@ body{
  .supply-row .supply-actions .badge{order:0}
  .supply-row .supply-actions>.btn{order:2}
 }
+
+/* v3.9.2: accessible Ink & Champagne search suggestions, shared across tabs */
+.search-picker{position:relative;min-width:0;width:100%}
+.search-picker>input[role="combobox"]{padding-right:39px!important;background-color:#FFFEFD}
+.search-picker:after{content:"⌄";position:absolute;right:14px;top:50%;transform:translateY(-50%);pointer-events:none;color:#9D7F57;font-size:19px;line-height:1}
+.search-picker:focus-within>input[role="combobox"]{border-color:#C4A574!important;box-shadow:0 0 0 3px rgba(196,165,116,.16)!important}
+.search-suggestions-popover{position:fixed;z-index:140;overflow:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;scrollbar-width:thin;padding:6px;background:#FFFEFC;border:1px solid #D9CCBA;border-radius:14px;box-shadow:0 18px 50px rgba(38,50,58,.20),0 3px 9px rgba(38,50,58,.07);color:#26323A}
+.search-suggestions-popover[hidden]{display:none!important}
+.search-suggest-caption{position:sticky;top:-6px;z-index:1;background:#F6F2EA;border-bottom:1px solid #E7DCCB;color:#806746;font:800 10px/1.3 ui-sans-serif,system-ui;letter-spacing:.7px;text-transform:uppercase;padding:10px 11px;margin:-6px -6px 5px}
+.search-suggest-option{display:flex;align-items:center;gap:7px;text-align:left;width:100%;min-height:43px;border:0;border-radius:9px;padding:9px 12px;background:#FFFEFC;color:#26323A;cursor:pointer;font:650 13px/1.25 ui-sans-serif,system-ui}
+.search-suggest-option:hover,.search-suggest-option.active{background:#F3EBDD;color:#634C2E}
+.search-suggest-option[aria-selected="true"]{background:#EDE4D4}
+.search-suggest-title{flex:1;min-width:0;overflow-wrap:anywhere}
+.search-suggest-subtitle{font-size:10px;color:#768583;text-align:right;max-width:37%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.search-suggest-check{font-size:14px;color:#A5875B;margin-left:3px}
+.search-suggest-empty,.search-suggest-more{padding:13px 11px;margin:0;font-size:12px;line-height:1.5;color:#79827F}
+.search-suggest-option:focus-visible{outline:2px solid #C4A574;outline-offset:-2px}
+@media(max-width:650px){
+ .search-suggestions-popover{border-radius:12px;box-shadow:0 9px 27px rgba(38,50,58,.22)}
+ .search-suggest-option{min-height:46px;font-size:14px;padding:10px 12px}
+}
 </style>
 </head>
 <body><div class="app">
-<header class="top"><div class="brand"><img class="logo brand-logo" src="./icon-192.png?v=3.7.1" width="48" height="48" alt="House & Cart icon"><div class="brand-copy"><div class="brand-name-row"><span style="font-family:Georgia,serif;font-size:27px;font-weight:500;letter-spacing:-1px">House &amp; Cart</span><span class="version-tag" id="appVersion" title="House & Cart app version">v3.9.1</span></div><div class="smalltext" style="letter-spacing:2px;text-transform:uppercase;font-size:9px">Your everyday home companion</div></div></div><div class="top-actions"><span class="pill" id="saveState">Saved on this device</span><button class="btn soft small" onclick="exportData()">Export backup</button><button class="btn ghost small" onclick="document.getElementById('importFile').click()">Import</button><button class="btn green small" onclick="openCloudAccount()">Account & sync</button><input id="importFile" type="file" accept=".json,application/json" hidden></div><button class="mobile-menu-button" type="button" aria-label="Open app menu" onclick="openMoreMenu()">☰ <span>Menu</span></button></header>
+<header class="top"><div class="brand"><img class="logo brand-logo" src="./icon-192.png?v=3.7.1" width="48" height="48" alt="House & Cart icon"><div class="brand-copy"><div class="brand-name-row"><span style="font-family:Georgia,serif;font-size:27px;font-weight:500;letter-spacing:-1px">House &amp; Cart</span><span class="version-tag" id="appVersion" title="House & Cart app version">v3.9.2</span></div><div class="smalltext" style="letter-spacing:2px;text-transform:uppercase;font-size:9px">Your everyday home companion</div></div></div><div class="top-actions"><span class="pill" id="saveState">Saved on this device</span><button class="btn soft small" onclick="exportData()">Export backup</button><button class="btn ghost small" onclick="document.getElementById('importFile').click()">Import</button><button class="btn green small" onclick="openCloudAccount()">Account & sync</button><input id="importFile" type="file" accept=".json,application/json" hidden></div><button class="mobile-menu-button" type="button" aria-label="Open app menu" onclick="openMoreMenu()">☰ <span>Menu</span></button></header>
 <div class="row mode-row" style="justify-content:space-between;align-items:center;margin:8px 0 4px"><div class="tabs" style="margin:0"><button id="modeKitchen" class="active" onclick="setMode('kitchen')">🍋 Kitchen</button><button id="modeCare" onclick="setMode('care')">🧺 Home care</button></div><div class="cloud-status-bar" id="cloudStatusBar" data-state="local" role="status" aria-live="polite"><span class="cloud-status-dot" aria-hidden="true"></span><strong id="cloudStatusLabel">Saved on this device</strong></div><span class="smalltext" id="modeCaption">Recipes, ingredients & weekly rituals</span></div><nav class="nav" id="nav" aria-label="Main navigation"><button data-view="home" class="active">⌂ Overview</button><button data-view="meals">♡ Recipes</button><button data-view="plan">▦ Planner</button><button data-view="shop">🛒 Shopping</button><button data-view="kitchen">🥬 Pantry</button><button data-view="history">↗ History</button><button data-view="cookable" style="display:none">✨ What can I cook?</button><button data-view="budget" style="display:none">◉ Budget</button></nav>
 <main id="main" tabindex="-1"></main></div><nav id="mobileNav" class="mobile-bottom-nav" aria-label="Mobile navigation"></nav>
 <div class="modalback" id="modalback"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="modtitle" tabindex="-1"><div class="modalhead"><h2 id="modtitle">Edit</h2><button class="x" type="button" aria-label="Close dialog" onclick="closeModal()">✕</button></div><div id="modbody"></div></div></div>
@@ -1270,9 +1291,176 @@ function versionSelectorMarkup(m,selectedId=''){
 }
 
 function openRecipe(id,versionId=''){let m=mealById(id);if(!m)return;let recipe=resolveRecipe(m,versionId);let steps=recipe.steps?.length?recipe.steps:(recipe.notes||'').split(/\n+/).filter(Boolean);showModal('Recipe · '+m.name,`<div class="recipe-detail">${m.photo?`<img class="meal-photo" style="height:230px" src="${m.photo}" alt="${esc(m.name)}">`:''}<div class="row" style="justify-content:space-between;margin:13px 0"><span class="badge">${esc((Array.isArray(m.category)?m.category:[m.category||'Dinner']).join(' · '))}</span><span class="smalltext">⏱ ${m.time||'—'} min · 🍽 ${m.servings||1} servings</span></div><div class="recipe-title-and-favorite"><h1>${esc(m.name)}</h1><button type="button" class="btn soft recipe-favorite-button ${m.favorite?'is-favorite':''}" aria-label="${m.favorite?'Remove from':'Add to'} favorites: ${esc(m.name)}" title="${m.favorite?'Remove from favorites':'Add to favorites'}" aria-pressed="${!!m.favorite}" onclick="toggleRecipeFavorite('${m.id}',this)">${m.favorite?'♥':'♡'}</button></div>${versionSelectorMarkup(m,versionId)}${tagBadges(recipe.tags)?`<div class="recipe-tags">${tagBadges(recipe.tags)}</div>`:''}<div class="two"><section><h3>What you'll need</h3>${(recipe.ingredients||[]).map(x=>`<div class="listline"><span class="grow">${esc(ingById(x.ingredientId)?.name||'Ingredient')}</span><b>${isSpice(ingById(x.ingredientId))?'To taste':`${esc(formatQuantity(x.qty,x.unit))}`}</b></div>`).join('')||'<p class="smalltext">No ingredients added yet.</p>'}</section><section><h3>Cook along</h3><p class="smalltext">Tick each step as you go.</p><div id="recipeSteps">${steps.map((st,i)=>`<label class="recipe-step"><input type="checkbox" class="check"><span><b>Step ${i+1}</b><br>${esc(st)}</span></label>`).join('')||'<p class="smalltext">No steps added yet. Edit this recipe to add them.</p>'}</div></section></div>${recipe.notes?`<div class="card" style="margin-top:15px;background:#fbf2eb"><b>Kitchen notes</b><p>${esc(recipe.notes)}</p></div>`:''}<div class="row" style="margin-top:16px"><button class="btn green" onclick="closeModal();openMeal('${m.id}')">Edit recipe</button><button class="btn soft" onclick="quickPlan('${m.id}','${recipe.versionId}')">＋ Add to planner</button><button class="btn ghost" onclick="openVariantManager('${m.id}')">⚙ Manage variations</button></div></div>`)}
-function pickerMarkup(name,placeholder,items,selectedId='',cls=''){let selected=items.find(x=>x.id===selectedId);let listId='pick_'+uid().replace(/[^a-z0-9]/gi,'');return `<div class="search-picker ${cls}"><input type="search" list="${listId}" autocomplete="off" aria-label="${esc(placeholder)}" placeholder="${esc(placeholder)}" value="${esc(selected?.name||'')}" oninput="syncSearchPicker(this)" onchange="syncSearchPicker(this)" data-target="${listId}_value"><datalist id="${listId}">${items.map(x=>`<option value="${esc(x.name)}"></option>`).join('')}</datalist><select id="${listId}_value" name="${name}" class="${cls==='ingredient-picker'?'ing-choice':''}" ${cls==='ingredient-picker'?'onchange="toggleSpiceFields(this)"':''} required hidden><option value="">Choose…</option>${items.map(x=>`<option value="${x.id}" ${x.id===selectedId?'selected':''}>${esc(x.name)}</option>`).join('')}</select></div>`}
-function syncSearchPicker(input){let target=document.getElementById(input.dataset.target);if(!target)return;let datalist=input.list;if(datalist){datalist.replaceChildren();[...target.options].filter(o=>o.value&&fieldWordMatch(o.textContent,input.value)).slice(0,70).forEach(o=>{let option=document.createElement('option');option.value=o.textContent;datalist.append(option)})}let match=[...target.options].find(o=>o.value&&norm(o.textContent)===norm(input.value));let next=match?match.value:'';if(target.value!==next){target.value=next;target.dispatchEvent(new Event('change',{bubbles:true}))}input.setCustomValidity(input.value&&!match?'Choose an item from the suggestions, or clear the search.':'')}
 
+/* One accessible, styled autocomplete for every searchable picker.
+   Unlike HTML datalists this is reliable on mobile and visually consistent.
+   The floating list is outside modal scroll containers, so nothing clips it. */
+function pickerMarkup(name,placeholder,items,selectedId='',cls='',optional=false){
+ const selected=items.find(x=>x.id===selectedId),id='pick_'+uid().replace(/[^a-z0-9]/gi,'');
+ return '<div class="search-picker '+esc(cls)+'">'+
+  '<input type="search" autocomplete="off" autocapitalize="off" spellcheck="false" role="combobox" aria-autocomplete="list" aria-haspopup="listbox" aria-expanded="false" aria-controls="searchSuggestionPopup" aria-label="'+esc(placeholder)+'" placeholder="'+esc(placeholder)+'" value="'+esc(selected?.name||'')+'" '+(optional?'':'required ')+'onfocus="showSearchSuggestions(this)" oninput="syncSearchPicker(this)" onkeydown="handleSearchPickerKeydown(event,this)" onclick="showSearchSuggestions(this)" data-target="'+id+'_value">'+
+  '<select id="'+id+'_value" name="'+esc(name)+'" class="'+(cls==='ingredient-picker'?'ing-choice':cls==='extra-ingredient'?'extra-ingredient':'')+'" '+(cls==='ingredient-picker'?'onchange="toggleSpiceFields(this)"':'')+' hidden>'+
+  '<option value="">Choose…</option>'+
+  items.map(x=>'<option value="'+esc(x.id)+'" '+(x.id===selectedId?'selected':'')+' data-search="'+esc([x.category||'',...(x.aliases||[])].flat().join(' '))+'">'+esc(x.name)+'</option>').join('')+'</select></div>';
+}
+function freeTextPickerMarkup(name,placeholder,items,value='',cls='',inputCls=''){
+ const id='pick_'+uid().replace(/[^a-z0-9]/gi,'');
+ const unique=[...new Map(items.map(x=>typeof x==='string'?{name:x}:x).filter(x=>x?.name).map(x=>[norm(x.name),x])).values()].sort((a,b)=>a.name.localeCompare(b.name));
+ return '<div class="search-picker free-text-picker '+esc(cls)+'">'+
+  '<input type="search" name="'+esc(name)+'" class="'+esc(inputCls)+'" autocomplete="off" spellcheck="false" role="combobox" aria-autocomplete="list" aria-haspopup="listbox" aria-expanded="false" aria-controls="searchSuggestionPopup" aria-label="'+esc(placeholder)+'" placeholder="'+esc(placeholder)+'" value="'+esc(value)+'" required onfocus="showSearchSuggestions(this)" oninput="syncSearchPicker(this)" onkeydown="handleSearchPickerKeydown(event,this)" onclick="showSearchSuggestions(this)" data-allow-new="1" data-target="'+id+'_value">'+
+  '<select id="'+id+'_value" hidden><option value=""></option>'+
+  unique.map(x=>'<option value="'+esc(x.id||x.name)+'" data-search="'+esc([x.category||'',...(x.aliases||[])].flat().join(' '))+'">'+esc(x.name)+'</option>').join('')+'</select></div>';
+}
+let activeSearchInput=null,activeSearchOptions=[],activeSearchIndex=-1;
+function searchSuggestionsElement(){
+ let popup=document.getElementById('searchSuggestionPopup');
+ if(popup)return popup;
+ popup=document.createElement('div');
+ popup.id='searchSuggestionPopup';
+ popup.className='search-suggestions-popover';
+ popup.setAttribute('role','listbox');
+ popup.setAttribute('aria-label','Matching choices');
+ popup.hidden=true;
+ // Don't blur the text field when touching a dropdown item.
+ popup.addEventListener('pointerdown',e=>e.preventDefault());
+ popup.addEventListener('click',e=>{
+  const button=e.target.closest('button[data-value]');
+  if(button&&activeSearchInput)chooseSearchSuggestion(activeSearchInput,button.dataset.value);
+ });
+ document.body.append(popup);
+ return popup;
+}
+function hideSearchSuggestions(){
+ const popup=document.getElementById('searchSuggestionPopup');
+ if(popup)popup.hidden=true;
+ if(activeSearchInput?.isConnected){
+  activeSearchInput.setAttribute('aria-expanded','false');
+  activeSearchInput.removeAttribute('aria-activedescendant');
+ }
+ activeSearchInput=null;activeSearchOptions=[];activeSearchIndex=-1;
+}
+function positionSearchSuggestions(){
+ const popup=document.getElementById('searchSuggestionPopup'),input=activeSearchInput;
+ if(!popup||popup.hidden||!input?.isConnected){if(popup&&!popup.hidden)hideSearchSuggestions();return}
+ const rect=input.getBoundingClientRect();
+ const vp=window.visualViewport,top=vp?.offsetTop||0,bottom=top+(vp?.height||window.innerHeight);
+ const below=bottom-rect.bottom-12,above=rect.top-top-12,useAbove=below<142&&above>below;
+ const height=Math.max(78,Math.min(280,useAbove?above:below));
+ const width=Math.min(rect.width,window.innerWidth-16),left=Math.max(8,Math.min(rect.left,window.innerWidth-width-8));
+ popup.style.left=left+'px';popup.style.width=width+'px';popup.style.maxHeight=height+'px';
+ popup.style.top=(useAbove?Math.max(top+5,rect.top-height-5):rect.bottom+5)+'px';
+ popup.classList.toggle('above',useAbove);
+}
+function searchMatchRank(opt,query){
+ const label=norm(opt.textContent||''),search=norm(opt.dataset.search||''),q=norm(query);
+ if(!q)return 0;
+ const tokens=q.split(/\s+/).filter(Boolean);
+ if(!tokens.every(token=>label.includes(token)||search.includes(token)))return -1;
+ if(label===q)return 0;
+ if(label.startsWith(q))return 1;
+ if(label.split(/\s+/).some(w=>w.startsWith(q)))return 2;
+ if(label.includes(q))return 3;
+ return 4;
+}
+function renderSearchSuggestions(input){
+ if(!input?.isConnected)return;
+ const target=document.getElementById(input.dataset.target);
+ if(!target)return;
+ const popup=searchSuggestionsElement();
+ if(activeSearchInput&&activeSearchInput!==input){
+  activeSearchInput.setAttribute('aria-expanded','false');
+  activeSearchInput.removeAttribute('aria-activedescendant');
+ }
+ activeSearchInput=input;activeSearchIndex=-1;
+ const query=input.value.trim();
+ const options=[...target.options].filter(o=>o.value);
+ const matches=options.map(opt=>({opt,rank:searchMatchRank(opt,query)})).filter(x=>x.rank>=0);
+ matches.sort((a,b)=>a.rank-b.rank||a.opt.textContent.localeCompare(b.opt.textContent));
+ activeSearchOptions=matches.slice(0,30).map(x=>x.opt);
+ popup.replaceChildren();
+ const heading=document.createElement('div');heading.className='search-suggest-caption';
+ heading.textContent=query?(matches.length+' matching '+(matches.length===1?'choice':'choices')):('Suggestions · '+options.length+' available');
+ popup.append(heading);
+ if(!matches.length){
+  const empty=document.createElement('div');empty.className='search-suggest-empty';
+  empty.textContent=input.dataset.allowNew==='1'?'No existing matches. You can still use this new name.':'No matches. Try another search or add a new item.';
+  popup.append(empty);
+ }else{
+  for(const [index,opt] of activeSearchOptions.entries()){
+   const button=document.createElement('button');
+   button.type='button';button.className='search-suggest-option';
+   button.id='search-suggestion-option-'+index;
+   button.setAttribute('role','option');button.setAttribute('aria-selected','false');
+   button.dataset.value=opt.value;
+   const name=document.createElement('span');name.className='search-suggest-title';name.textContent=opt.textContent;
+   button.append(name);
+   const tag=opt.dataset.search?.trim();
+   if(tag){
+    const sub=document.createElement('small');sub.className='search-suggest-subtitle';sub.textContent=tag.split(' ').slice(0,5).join(' ');button.append(sub);
+   }
+   const check=document.createElement('span');check.className='search-suggest-check';check.textContent='↗';check.setAttribute('aria-hidden','true');button.append(check);
+   popup.append(button);
+  }
+  if(matches.length>30){
+   const more=document.createElement('p');more.className='search-suggest-more';
+   more.textContent='Keep typing to narrow '+matches.length+' matches';popup.append(more);
+  }
+ }
+ popup.hidden=false;
+ input.setAttribute('aria-expanded','true');
+ positionSearchSuggestions();
+}
+function showSearchSuggestions(input){renderSearchSuggestions(input)}
+function syncSearchPicker(input){
+ const target=document.getElementById(input.dataset.target);if(!target)return;
+ const match=[...target.options].find(opt=>opt.value&&norm(opt.textContent)===norm(input.value));
+ const value=match?.value||'';
+ if(target.value!==value){target.value=value;target.dispatchEvent(new Event('change',{bubbles:true}))}
+ if(input.dataset.allowNew==='1'){
+  input.setCustomValidity('');
+  if(match)input.dispatchEvent(new Event('change',{bubbles:true}));
+ }else input.setCustomValidity(input.value&&!match?'Choose an item from the suggestions.':'');
+ renderSearchSuggestions(input);
+}
+function chooseSearchSuggestion(input,value){
+ const target=document.getElementById(input.dataset.target);
+ const opt=[...(target?.options||[])].find(x=>x.value===value);
+ if(!opt)return;
+ input.value=opt.textContent;
+ input.setCustomValidity('');
+ const changed=target.value!==value;
+ target.value=value;
+ if(changed)target.dispatchEvent(new Event('change',{bubbles:true}));
+ if(input.dataset.allowNew==='1')input.dispatchEvent(new Event('change',{bubbles:true}));
+ hideSearchSuggestions();
+}
+function handleSearchPickerKeydown(event,input){
+ const popup=document.getElementById('searchSuggestionPopup');
+ if(event.key==='Escape'){if(popup&&!popup.hidden){event.preventDefault();hideSearchSuggestions()}return}
+ if(event.key==='Tab'){hideSearchSuggestions();return}
+ if(event.key==='ArrowDown'||event.key==='ArrowUp'){
+  event.preventDefault();
+  if(!popup||popup.hidden||activeSearchInput!==input)renderSearchSuggestions(input);
+  if(!activeSearchOptions.length)return;
+  activeSearchIndex=(activeSearchIndex+(event.key==='ArrowDown'?1:-1)+activeSearchOptions.length)%activeSearchOptions.length;
+  const buttons=[...searchSuggestionsElement().querySelectorAll('button[data-value]')];
+  buttons.forEach((b,i)=>{b.classList.toggle('active',i===activeSearchIndex);b.setAttribute('aria-selected',String(i===activeSearchIndex))});
+  const chosen=buttons[activeSearchIndex];input.setAttribute('aria-activedescendant',chosen.id);chosen.scrollIntoView({block:'nearest'});
+  return;
+ }
+ if(event.key==='Enter'&&popup&&!popup.hidden&&activeSearchInput===input&&activeSearchOptions.length){
+  const value=activeSearchOptions[Math.max(0,activeSearchIndex)].value;
+  if(value){event.preventDefault();chooseSearchSuggestion(input,value)}
+ }
+}
+document.addEventListener('pointerdown',event=>{
+ const popup=document.getElementById('searchSuggestionPopup');
+ if(!popup||popup.hidden)return;
+ if(!popup.contains(event.target)&&!event.target.closest('.search-picker'))hideSearchSuggestions();
+});
+window.addEventListener('scroll',positionSearchSuggestions,true);
+window.addEventListener('resize',positionSearchSuggestions);
+window.visualViewport?.addEventListener('resize',positionSearchSuggestions);
 function refreshIngredientPreviews(){
  document.querySelectorAll('#mealIngredients .ingredient-row,#variantIngredients .ingredient-row').forEach(row=>{
   const el=row.querySelector('.quantity-preview');if(!el)return;
