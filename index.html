@@ -2014,7 +2014,7 @@ function cleanInventoryRow(x){
   '<button class="btn soft small" onclick="openCleanProduct(\''+x.id+'\')">Update</button></div></div>';
 }
 function cleanInventoryView(){
- return '<div class="hero"><div><div class="eyebrow">Home Care stock</div><h1>Supply cupboard</h1><p class="sub">Organise each product in multiple categories and keep accurate stock levels.</p></div><div class="row"><button class="btn soft" onclick="openCareCategoryManager()">⚙ Categories</button><button class="btn green" onclick="openCleanProduct()">＋ Add product</button></div></div><div class="card"><div class="sectionhead"><h2>Your products</h2><span class="badge">'+db.cleaningInventory.length+' tracked</span></div>'+(db.cleaningInventory.map(cleanInventoryRow).join('')||'<div class="empty">No products tracked yet. Add one above.</div>')+'</div>';
+ return '<div class="hero"><div><div class="eyebrow">Home Care stock</div><h1>Supply cupboard</h1><p class="sub">Organise each product in multiple categories and keep accurate stock levels.</p></div><div class="row"><button class="btn soft" onclick="openCareCategoryManager()">⚙ Categories</button><button class="btn green" onclick="openCleanProduct()">＋ Add product</button></div></div><div class="card"><div class="sectionhead"><h2>Your products</h2><span class="badge">'+db.cleaningInventory.length+' tracked</span></div><div id="careSupplyList">'+(db.cleaningInventory.map(cleanInventoryRow).join('')||'<div class="empty">No products tracked yet. Add one above.</div>')+'</div></div>';
 }
 function trackEssential(id){
  const essential=db.cleaningEssentials.find(x=>x.id===id);if(!essential)return;
