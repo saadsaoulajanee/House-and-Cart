@@ -553,9 +553,9 @@ const DEFAULT_ING=[
 ];
 const uid=()=>Math.random().toString(36).slice(2,10);
 const CLEAN_ESSENTIALS=[['Dishwashing liquid','Kitchen cleaning','🫧'],['Dishwasher tablets','Kitchen cleaning','🍽️'],['All-purpose cleaner','Surfaces','🧴'],['Bathroom cleaner','Bathroom','🚿'],['Toilet cleaner','Bathroom','🚽'],['Glass cleaner','Surfaces','🪟'],['Floor cleaner','Floors','🧹'],['Laundry detergent','Laundry','🧺'],['Fabric softener','Laundry','👕'],['Bleach / disinfectant','Disinfection','🧼'],['Sponges','Tools & accessories','🧽'],['Microfibre cloths','Tools & accessories','🧻'],['Bin bags','Waste','🗑️'],['Rubber gloves','Tools & accessories','🧤'],['Paper towels','Paper goods','🧻']];
-const fresh=()=>({meals:[],cleaningInventory:[],cleaningShopping:[],cleaningHistory:[],cleaningEssentials:CLEAN_ESSENTIALS.map(x=>({id:uid(),name:x[0],category:x[1],categories:[x[1]],emoji:x[2],qty:1,threshold:1,unit:'pack',essential:true})),ingredients:DEFAULT_ING.map(x=>({id:uid(),name:x[0],category:x[1],unit:x[2],aliases:x[3],isSpice:!!x[4],custom:false})),inventory:[],plan:{},shopping:[],history:[],settings:{currency:'EUR',store:'',budget:80,careBudget:100,careMonthlyBudgets:{},careCategories:[...new Set(CLEAN_ESSENTIALS.map(x=>x[1]))]}});
+const fresh=()=>({meals:[],cleaningInventory:[],cleaningShopping:[],cleaningHistory:[],cleaningEssentials:CLEAN_ESSENTIALS.map(x=>({id:uid(),name:x[0],category:x[1],categories:[x[1]],emoji:x[2],qty:1,threshold:1,unit:'pack',essential:true})),ingredients:DEFAULT_ING.map(x=>({id:uid(),name:x[0],category:x[1],unit:x[2],aliases:x[3],isSpice:!!x[4],custom:false})),inventory:[],plan:{},shopping:[],history:[],cookingHistory:[],settings:{currency:'EUR',store:'',budget:80,careBudget:100,careMonthlyBudgets:{},careCategories:[...new Set(CLEAN_ESSENTIALS.map(x=>x[1]))]}});
 let db;try{db=JSON.parse(localStorage.getItem(KEY))||fresh()}catch(e){db=fresh()}
-db={...fresh(),...db,cleaningInventory:db.cleaningInventory||[],cleaningShopping:db.cleaningShopping||[],cleaningHistory:db.cleaningHistory||[],cleaningEssentials:db.cleaningEssentials||fresh().cleaningEssentials,settings:{...fresh().settings,...(db.settings||{})}};
+db={...fresh(),...db,cleaningInventory:db.cleaningInventory||[],cleaningShopping:db.cleaningShopping||[],cleaningHistory:db.cleaningHistory||[],cookingHistory:db.cookingHistory||[],cleaningEssentials:db.cleaningEssentials||fresh().cleaningEssentials,settings:{...fresh().settings,...(db.settings||{})}};
 
 /* Home Care data migration: legacy single-category records remain readable.
    The canonical category collection lives inside settings and syncs with existing Supabase payloads. */
@@ -598,7 +598,7 @@ const RECOVERY_KEY='housecart_recovery_snapshot_v1',BACKUP_AT_KEY='housecart_las
 function stableJson(value){return JSON.stringify(value,(key,item)=>item&&typeof item==='object'&&!Array.isArray(item)?Object.keys(item).sort().reduce((out,k)=>(out[k]=item[k],out),{}):item)}
 
 /* Stable, non-mutating comparison across compatible saved-data versions. */
-const SYNC_COLLECTION_KEYS=['meals','cleaningInventory','cleaningShopping','cleaningHistory','cleaningEssentials','ingredients','inventory','shopping','history'];
+const SYNC_COLLECTION_KEYS=['meals','cleaningInventory','cleaningShopping','cleaningHistory','cleaningEssentials','ingredients','inventory','shopping','history','cookingHistory'];
 const CLOUD_SYNC_BASELINE_PREFIX='housecart_cloud_baseline_v2_';
 const CLOUD_CONFLICT_SNOOZE_PREFIX='housecart_cloud_conflict_dismissed_v1_';
 function comparableCloudPayload(value){
@@ -673,7 +673,7 @@ function lastSyncText(){let raw=localStorage.getItem(LAST_SYNC_AT_KEY);return ra
 function markCloudSynced(payload,updatedAt){lastCloudPayload=comparableCloudText(payload);persistCloudBaseline(cloudUser?.id,lastCloudPayload);clearDismissedConflict(cloudUser?.id);cloudRemoteUpdatedAt=updatedAt||new Date().toISOString();localStorage.setItem(LAST_SYNC_AT_KEY,new Date().toISOString());const status=document.getElementById('saveState');if(status)status.textContent='✓ Cloud synced';refreshCloudStatus()}
 
 function save(){localStorage.setItem(KEY,JSON.stringify(db));let s=document.getElementById('saveState');if(s)s.textContent=cloudUser?'Saved locally · cloud sync pending':'Saved on this device';if(cloudUser)scheduleCloudSync()}
-function cloudPayload(){return {meals:db.meals,cleaningInventory:db.cleaningInventory,cleaningShopping:db.cleaningShopping,cleaningHistory:db.cleaningHistory,cleaningEssentials:db.cleaningEssentials,ingredients:db.ingredients,inventory:db.inventory,plan:db.plan,shopping:db.shopping,history:db.history,settings:db.settings}}
+function cloudPayload(){return {meals:db.meals,cleaningInventory:db.cleaningInventory,cleaningShopping:db.cleaningShopping,cleaningHistory:db.cleaningHistory,cleaningEssentials:db.cleaningEssentials,ingredients:db.ingredients,inventory:db.inventory,plan:db.plan,shopping:db.shopping,history:db.history,cookingHistory:db.cookingHistory||[],settings:db.settings}}
 function scheduleCloudSync(){clearTimeout(syncTimer);syncTimer=setTimeout(()=>syncNow('push'),900)}
 
 function chooseCloudConflict(){
@@ -935,6 +935,104 @@ function wordStartsMatch(value,query){let q=norm(query);if(!q)return true;const 
 function fieldWordMatch(value,query){const q=norm(query);if(!q)return true;return q.split(/\s+/).every(part=>wordStartsMatch(value,part))}
 function convertQty(q,from,to){let a=unitInfo(from),b=unitInfo(to);if(a.family!==b.family)return null;return Number(q||0)*a.factor/b.factor}
 function pantryQty(ingredientId,targetUnit){let ing=ingById(ingredientId);if(isSpice(ing))return 0;let total=0,matched=false;for(const x of db.inventory.filter(i=>i.ingredientId===ingredientId)){let v=convertQty(x.qty,x.unit,targetUnit);if(v!==null){total+=v;matched=true}}return matched?total:0}
+
+/* Recording a cooked meal:
+   A planned slot is recorded only once. Ingredient quantities are converted
+   to their pantry units, drawn from the earliest-expiring stock first,
+   and never allowed below zero. Spices remain status-based.
+*/
+function cookingUsage(mealId,variantId='',servings){
+ const recipe=resolveRecipe(mealById(mealId),variantId);
+ if(!recipe)return null;
+ const count=Number(servings)||Number(recipe.servings)||1;
+ if(!(count>0&&Number.isFinite(count)))return null;
+ const scale=count/(Number(recipe.servings)||1),needs=new Map();
+ const spices=[];
+ for(const row of recipe.ingredients||[]){
+  const ing=ingById(row.ingredientId);
+  if(!ing)continue;
+  if(isSpice(ing)){spices.push(ing.name);continue}
+  const value=Number(row.qty);
+  if(!Number.isFinite(value)||value<=0)continue;
+  const unit=row.unit||ing.unit||'piece',family=unitInfo(unit).family,key=ing.id+'|'+family;
+  const existing=needs.get(key),converted=existing?convertQty(value,unit,existing.unit):value;
+  if(existing)existing.qty+=(converted===null?0:converted)*scale;
+  else needs.set(key,{ingredientId:ing.id,name:ing.name,unit,qty:value*scale,category:ing.category});
+ }
+ const plannedDeductions=[],lines=[];
+ const sortInventory=(a,b)=>String(a.expiry||'9999-12-31').localeCompare(String(b.expiry||'9999-12-31'));
+ const capacity=new Map(db.inventory.map(row=>[row.id,Math.max(0,Number(row.qty)||0)]));
+ for(const need of needs.values()){
+  let left=need.qty,available=0;
+  const matching=db.inventory.filter(row=>row.ingredientId===need.ingredientId&&!row.isSpice&&convertQty(1,row.unit,need.unit)!==null).sort(sortInventory);
+  for(const row of matching){
+   const inUnit=convertQty(capacity.get(row.id),row.unit,need.unit);
+   if(inUnit===null)continue;
+   available+=inUnit;
+   if(left<=1e-8||inUnit<=0)continue;
+   const used=Math.min(left,inUnit),pantryUnits=convertQty(used,need.unit,row.unit);
+   if(pantryUnits===null)continue;
+   capacity.set(row.id,Math.max(0,capacity.get(row.id)-pantryUnits));
+   plannedDeductions.push({inventoryId:row.id,ingredientId:need.ingredientId,qty:Number(pantryUnits.toPrecision(12)),unit:row.unit});
+   left=Math.max(0,left-used);
+  }
+  lines.push({...need,available,missing:Math.max(0,need.qty-available),deducted:need.qty-left});
+ }
+ return {recipe,servings:count,lines,spices,deductions:plannedDeductions};
+}
+function cookingUsageMarkup(result){
+ const lines=result.lines.map(line=>
+  '<div class="cook-usage-line"><div class="cook-usage-ingredient"><b>'+esc(line.name)+'</b><small>Needed: '+esc(formatQuantity(line.qty,line.unit))+' · Pantry: '+esc(formatQuantity(line.available,line.unit))+'</small></div><span class="'+(line.missing>1e-8?'cook-shortage':'cook-deduct')+'">'+(line.missing>1e-8?'Short by '+esc(formatQuantity(line.missing,line.unit)):'− '+esc(formatQuantity(line.qty,line.unit)))+'</span></div>'
+ ).join('');
+ return (lines||'<p class="smalltext">No measurable ingredients to deduct.</p>')+(result.spices.length?'<p class="smalltext">Spices remain tracked by status: '+esc(result.spices.join(', '))+'.</p>':'')+(result.lines.some(x=>x.missing>1e-8)?'<p class="cook-warning">Some pantry quantities are insufficient or use incompatible units. The app will deduct only what is available, without allowing negative stock.</p>':'');
+}
+function openCookedFromSlot(day,occasion){
+ const slot=db.plan[day]?.[occasion];
+ if(!slot?.mealId)return;
+ if(slot.cookedAt){showModal('Already marked as cooked','<p class="sub">This planned meal was already logged. Your pantry was deducted once, so it will not be deducted again.</p>');return}
+ openCookedConfirm(slot.mealId,slot.variantId||'',day,occasion);
+}
+function openCookedConfirm(mealId,variantId='',day='',occasion=''){
+ const parent=mealById(mealId),recipe=resolveRecipe(parent,variantId);
+ if(!recipe)return;
+ const planned=day&&occasion?db.plan[day]?.[occasion]:null;
+ if(day&&occasion&&(!planned||planned.mealId!==mealId)){alert('This planned meal has changed. Reopen the planner to log the correct meal.');return}
+ if(planned?.cookedAt){showModal('Already marked as cooked','<p class="sub">This planned meal has already been recorded.</p>');return}
+ const servings=Number(planned?.servings)||Number(parent.servings)||1;
+ const choice=variantId?versionTitle(parent,variantId):'Original';
+ const body='<form id="cookedMealForm"><p class="sub">Confirm what you cooked. House & Cart will subtract its ingredients from the pantry, using the recipe version and portions you specify.</p><div class="cook-confirm-heading"><strong>'+esc(parent.name)+'</strong><span class="version-chip">'+esc(choice)+'</span></div><div class="field"><label for="cookedServings">Servings cooked</label><input id="cookedServings" type="number" required min="0.25" step="0.25" value="'+servings+'"></div><div id="cookUsagePreview">'+cookingUsageMarkup(cookingUsage(mealId,variantId,servings))+'</div><div class="cook-confirm-actions"><button type="button" class="btn ghost" onclick="closeModal()">Cancel</button><button type="submit" class="btn green">✓ Confirm cooked & update pantry</button></div></form>';
+ showModal('I cooked this recipe',body);
+ const form=document.getElementById('cookedMealForm');
+ form.querySelector('#cookedServings').oninput=e=>{
+  const preview=cookingUsage(mealId,variantId,Number(e.target.value));
+  document.getElementById('cookUsagePreview').innerHTML=preview?cookingUsageMarkup(preview):'<p class="cook-warning">Enter a valid number of servings.</p>';
+ };
+ form.onsubmit=e=>{
+  e.preventDefault();
+  const result=recordCookedMeal(mealId,variantId,Number(form.querySelector('#cookedServings').value),day,occasion);
+  if(!result){alert('Could not log this meal. Check the planner or servings and try again.');return}
+  closeModal();render();
+  showModal('Meal cooked ✓','<p class="sub">'+esc(parent.name)+' ('+result.servings+' servings) has been recorded, and available ingredient quantities were deducted from your pantry.</p><p class="smalltext">'+result.deductions.length+' pantry stock batch'+(result.deductions.length===1?'':'es')+' updated. You can adjust quantities in Pantry using the + and − controls.</p><button class="btn green" onclick="closeModal()">Done</button>');
+ };
+}
+function recordCookedMeal(mealId,variantId='',servings=1,day='',occasion=''){
+ const planned=day&&occasion?db.plan[day]?.[occasion]:null;
+ if(day&&occasion&&(!planned||planned.mealId!==mealId||planned.cookedAt))return null;
+ const result=cookingUsage(mealId,variantId,servings);
+ if(!result)return null;
+ for(const delta of result.deductions){
+  const row=db.inventory.find(x=>x.id===delta.inventoryId);
+  if(!row)continue;
+  row.qty=Math.max(0,Number((Math.max(0,Number(row.qty)||0)-delta.qty).toPrecision(12)));
+ }
+ const now=new Date().toISOString(),id=uid();
+ db.cookingHistory??=[];
+ db.cookingHistory.push({id,mealId,mealName:result.recipe.name,variantId:result.recipe.versionId||'',versionName:result.recipe.versionName,servings:result.servings,cookedAt:now,day:day||'',occasion:occasion||'',deductions:result.deductions,missing:result.lines.filter(x=>x.missing>1e-8).map(x=>({ingredientId:x.ingredientId,qty:x.missing,unit:x.unit}))});
+ if(planned){planned.cookedAt=now;planned.cookLogId=id}
+ save();
+ return result;
+}
+
 function aggregatePlan(){let map={};for(const p of plannedThisWeek({includeCooked:false})){let parent=mealById(p.mealId),m=resolveRecipe(parent,p.variantId);if(!m)continue;let factor=(Number(p.servings)||m.servings||1)/(Number(m.servings)||1);for(const line of m.ingredients||[]){let ing=ingById(line.ingredientId);if(!ing||isSpice(ing))continue;let unit=line.unit||ing.unit||'piece',info=unitInfo(unit),key=ing.id+'::'+info.family;map[key]??={ingredientId:ing.id,qty:0,unit,category:ing.category};let converted=convertQty(Number(line.qty||0),unit,map[key].unit);map[key].qty+=Number(converted===null?line.qty:converted)*factor;}}return map}
 function autoAddOutOfStockSpices(){for(const ing of db.ingredients.filter(isSpice)){let inv=db.inventory.find(x=>x.ingredientId===ing.id);let out=!!inv&&inv.spiceStatus==='out';let existing=db.shopping.find(x=>x.source==='spice-auto'&&x.ingredientId===ing.id);if(out&&!existing)db.shopping.push({id:uid(),ingredientId:ing.id,name:ing.name,category:'Spices',qty:0,unit:'',checked:false,source:'spice-auto',auto:true,price:0});if(!out&&existing)db.shopping=db.shopping.filter(x=>!(x.source==='spice-auto'&&x.ingredientId===ing.id))}}
 function addShoppingFromPlan(){let agg=Object.values(aggregatePlan()),oldPlan=db.shopping.filter(x=>x.source==='plan'),other=db.shopping.filter(x=>x.source!=='plan');let next=[];for(const need of agg){let have=pantryQty(need.ingredientId,need.unit),remaining=Math.max(0,need.qty-have);let prior=oldPlan.find(x=>x.ingredientId===need.ingredientId&&convertQty(1,x.unit,need.unit)!==null);if(remaining>0.000001){next.push({id:prior?.id||uid(),ingredientId:need.ingredientId,name:ingById(need.ingredientId)?.name||'Ingredient',qty:remaining,unit:need.unit,category:need.category,checked:prior?.checked||false,source:'plan',price:prior?.price||0,plannedQty:need.qty,pantryDeducted:Math.min(have,need.qty)});}}db.shopping=[...other,...next];autoAddOutOfStockSpices();save();render();let covered=agg.filter(x=>pantryQty(x.ingredientId,x.unit)>=x.qty).length;alert('Shopping list updated. Pantry stock was deducted from planned quantities.'+(covered?' '+covered+' ingredient(s) are fully covered by your pantry.':''))}
