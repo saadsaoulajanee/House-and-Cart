@@ -9,7 +9,7 @@ await page.route('https://cdn.jsdelivr.net/npm/@supabase/**',route=>route.abort(
 try {
  await page.goto(origin,{waitUntil:'domcontentloaded'});
  await page.waitForSelector('#mobileNav button');
- assert.match(await page.locator('#appVersion').innerText(),/v3\.7\.1/);
+ assert.match(await page.locator('#appVersion').innerText(),/v3\.8\.0/);
  assert.match(await page.locator('.brand').innerText(),/House & Cart/);
  // The small version badge sits on the same baseline as the app name.
  assert.equal(await page.locator('.brand-name-row #appVersion').count(),1);
@@ -273,6 +273,100 @@ try {
  assert.equal(await page.locator('#mobileNav button.active').getAttribute('data-mobile-view'),'home','Right swipe moves to previous tab');
 
 
+
+ // Home Care: editable multi-category essentials and safe deletion.
+ await page.locator('#modeCare').click();
+ assert.equal(await page.locator('#mobileNav button').count(),6,'Home Care has Home, Essentials, Cupboard, Restock, Budget and History');
+ await page.locator('#mobileNav button[data-mobile-view="meals"]').click();
+ await page.getByRole('button',{name:/Manage categories/}).first().click();
+ await page.locator('#newCareCat').fill('Pet Care');
+ await page.locator('#careCatCreateForm button[type="submit"]').click();
+ assert.equal(await page.locator('.care-cat-edit-row[data-category="Pet Care"]').count(),1);
+ await page.locator('.care-cat-edit-row[data-category="Pet Care"] input').fill('Pet supplies');
+ await page.locator('.care-cat-edit-row[data-category="Pet Care"] button[data-action="rename"]').click();
+ assert.equal(await page.locator('.care-cat-edit-row[data-category="Pet supplies"]').count(),1);
+ await page.locator('#modalback .x').click();
+ await page.getByRole('button',{name:/Add essential/}).click();
+ await page.locator('#essentialForm input[name="name"]').fill('Grooming wipes');
+ await page.locator('#essentialForm .care-cat-chip',{hasText:'Bathroom'}).click();
+ await page.locator('#essentialForm .care-cat-chip',{hasText:'Pet supplies'}).click();
+ await page.locator('#essentialForm button[type="submit"]').click();
+ const extraId=await page.evaluate(()=>db.cleaningEssentials.find(x=>x.name==='Grooming wipes')?.id);
+ assert.ok(extraId,'New essential stored');
+ assert.deepEqual(await page.evaluate(id=>categoriesOf(db.cleaningEssentials.find(x=>x.id===id)),extraId),['Bathroom','Pet supplies']);
+ assert.equal(await page.locator('.essential-main b',{hasText:'Grooming wipes'}).count(),2,'One essential appears under both groups');
+ await page.evaluate(id=>trackEssential(id),extraId);
+ assert.equal(await page.evaluate(id=>db.cleaningInventory.filter(x=>x.essentialId===id).length,extraId),1,'Multi-category essential creates only one stock record');
+ await page.getByRole('button',{name:/Manage categories/}).first().click();
+ page.once('dialog',dialog=>dialog.accept());
+ await page.locator('.care-cat-edit-row[data-category="Pet supplies"] button[data-action="delete"]').click();
+ assert.equal(await page.evaluate(()=>db.cleaningEssentials.some(x=>x.name==='Grooming wipes')),true,'Category deletion retains essentials');
+ assert.deepEqual(await page.evaluate(id=>categoriesOf(db.cleaningEssentials.find(x=>x.id===id)),extraId),['Bathroom']);
+ await page.locator('#modalback .x').click();
+
+ // Supply cupboard keeps category assignments and auto-generates a restock entry.
+ await page.locator('#mobileNav button[data-mobile-view="kitchen"]').click();
+ await page.locator('.supply-row',{hasText:'Grooming wipes'}).getByRole('button',{name:'Update'}).click();
+ assert.ok(await page.locator('#cleanForm .care-cat-chip',{hasText:'Bathroom'}).locator('input').isChecked());
+ await page.locator('#cleanForm input[name="qty"]').fill('1');
+ await page.locator('#cleanForm button[type="submit"]').click();
+ assert.equal(await page.evaluate(()=>db.cleaningShopping.filter(x=>x.name==='Grooming wipes'&&!x.checked).length),1);
+ await page.locator('#mobileNav button[data-mobile-view="shop"]').click();
+ const restock=page.locator('.care-restock-line',{hasText:'Grooming wipes'}).first();
+ await restock.locator('input.check').check();
+ assert.equal(await page.evaluate(()=>db.cleaningShopping.find(x=>x.name==='Grooming wipes')?.checked),true);
+ assert.ok(await page.evaluate(()=>Date.parse(db.cleaningShopping.find(x=>x.name==='Grooming wipes')?.checkedAt)>0),'Timestamp set when purchased');
+ assert.equal(await page.evaluate(id=>db.cleaningInventory.find(x=>x.essentialId===id).qty,extraId),2);
+ await page.locator('.care-restock-line',{hasText:'Grooming wipes'}).first().locator('input.check').uncheck();
+ assert.equal(await page.evaluate(id=>db.cleaningInventory.find(x=>x.essentialId===id).qty,extraId),1,'Unchecking reverses credited stock');
+ await page.locator('.care-restock-line',{hasText:'Grooming wipes'}).first().locator('input.check').check();
+
+ // Save a real-world trip, which must persist after purchased items expire.
+ await page.getByRole('button',{name:/Log shopping trip/}).click();
+ await page.locator('#careTripStore').fill('Leroy Merlin');
+ await page.locator('#careTripForm input[name="total"]').fill('32.50');
+ assert.match(await page.locator('#careTripForm textarea[name="items"]').inputValue(),/Grooming wipes/);
+ await page.locator('#careTripForm textarea[name="notes"]').fill('Home Care shopping');
+ await page.locator('#careTripForm button[type="submit"]').click();
+ assert.equal(await page.evaluate(()=>db.cleaningHistory.length),1);
+ assert.equal(await page.evaluate(()=>db.history.length),0,'Home Care trips stay separate from Kitchen history');
+ assert.equal(await page.evaluate(()=>cloudPayload().cleaningHistory.length),1,'Home Care trips included in cloud sync');
+ const expired=await page.evaluate(()=>{
+  const item=db.cleaningShopping.find(x=>x.name==='Grooming wipes');
+  item.checkedAt=new Date(Date.now()-CARE_RESTOCK_EXPIRE_MS-60*1000).toISOString();
+  save();return purgeExpiredCareRestock();
+ });
+ assert.equal(expired,1,'Restock removes checked item after two hours');
+ assert.equal(await page.evaluate(()=>db.cleaningHistory.length),1,'Expiry does not delete shopping history');
+ await page.reload({waitUntil:'domcontentloaded'});
+ await page.locator('#modeCare').click();
+ assert.equal(await page.evaluate(()=>db.cleaningShopping.find(x=>x.name==='Grooming wipes')),undefined,'Expired item stays removed after reload');
+ await page.locator('#mobileNav button[data-mobile-view="budget"]').click();
+ assert.match(await page.locator('#main').innerText(),/Leroy Merlin/);
+ assert.equal(await page.evaluate(()=>careMonthSpent()),32.5);
+ await page.locator('.care-budget-toolbar input[type="number"]').fill('100');
+ await page.locator('.care-budget-toolbar input[type="number"]').dispatchEvent('change');
+ assert.equal(await page.evaluate(()=>careMonthBudget()),100);
+ await page.locator('#mobileNav button[data-mobile-view="history"]').click();
+ assert.equal(await page.locator('.care-trip-card').count(),1);
+ await page.getByRole('button',{name:/Log shopping trip/}).click();
+ await page.locator('#careTripStore').fill('Carrefour');
+ await page.locator('#careTripForm input[name="total"]').fill('9.99');
+ await page.locator('#careTripForm textarea[name="items"]').fill('Kitchen towels');
+ await page.locator('#careTripForm button[type="submit"]').click();
+ assert.equal(await page.evaluate(()=>Number(careMonthSpent().toFixed(2))),42.49,'Multiple stores sum correctly');
+ await page.locator('.care-trip-card',{hasText:'Leroy Merlin'}).getByRole('button',{name:'Edit trip'}).click();
+ await page.locator('#careTripStore').fill('IKEA');
+ await page.locator('#careTripForm input[name="total"]').fill('35');
+ await page.locator('#careTripForm button[type="submit"]').click();
+ assert.equal(await page.evaluate(()=>Number(careMonthSpent().toFixed(2))),44.99,'Editing adjusts budget');
+ page.once('dialog',dialog=>dialog.accept());
+ await page.locator('.care-trip-card',{hasText:'Carrefour'}).getByRole('button',{name:'Delete'}).click();
+ assert.equal(await page.evaluate(()=>db.cleaningHistory.length),1);
+ assert.equal(await page.evaluate(()=>careMonthSpent()),35);
+ await page.locator('#mobileNav button[data-mobile-view="meals"]').click();
+ assert.equal(await page.locator('.essential-main b',{hasText:'Grooming wipes'}).count(),1);
+
  const snap=await page.evaluate(()=>snapshotForRecovery('Automated smoke test'));
  assert.equal(snap,true);
  await page.locator('.mobile-menu-button').click();
@@ -289,7 +383,7 @@ try {
 
  await testMockCloudSync(browser,origin);
  assert.deepEqual(errors,[],'Browser JavaScript exceptions');
- console.log('PASS: official icon 02 PNG assets, inline version badge, Ink & Champagne and existing features');
+ console.log('PASS: Home Care multi-categories, timed restock removal, separate spending history/budget, icons and existing features');
 }finally{
  await browser.close();
 }
