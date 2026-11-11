@@ -9,7 +9,7 @@ await page.route('https://cdn.jsdelivr.net/npm/@supabase/**',route=>route.abort(
 try {
  await page.goto(origin,{waitUntil:'domcontentloaded'});
  await page.waitForSelector('#mobileNav button');
- assert.match(await page.locator('#appVersion').innerText(),/v3\.8\.1/);
+ assert.match(await page.locator('#appVersion').innerText(),/v3\.8\.2/);
  assert.match(await page.locator('.brand').innerText(),/House & Cart/);
  // The small version badge sits on the same baseline as the app name.
  assert.equal(await page.locator('.brand-name-row #appVersion').count(),1);
@@ -547,6 +547,26 @@ async function testCloudRefreshGuards(browser,origin){
   const equal=await page.evaluate(()=>Promise.race([syncNow('manual'),new Promise(r=>setTimeout(()=>r('stalled'),1200))]));
   assert.equal(equal,true,'Legacy defaults and timestamp-only changes must compare equal');
   assert.equal(await page.getByRole('dialog',{name:/Choose which data to keep/}).isVisible(),false);
+
+  // Different cleanup timestamps / category checkbox order are not independent user edits.
+  await page.evaluate(()=>{
+   const remote=window.__refreshCloud.row;
+   const item={id:'already-bought-homecare',name:'Bin bags',category:'Waste',categories:['Waste'],checked:true,checkedAt:new Date().toISOString(),auto:false};
+   db.cleaningShopping.push(item);
+   remote.payload.cleaningShopping.push({...item,checkedAt:new Date(Date.now()-60*1000).toISOString()});
+   const localEssential=db.cleaningEssentials[0];
+   localEssential.categories=[localEssential.category,'Surfaces'];
+   remote.payload.cleaningEssentials[0].categories=['Surfaces',localEssential.category];
+   remote.payload.cleaningEssentials[0].category='Surfaces';
+   remote.updated_at=new Date(Date.now()+130000).toISOString();
+   window.__refreshCloud.row=remote;
+   localStorage.setItem(KEY,JSON.stringify(db));
+  });
+  const metadataOnly=await page.evaluate(()=>Promise.race([syncNow('manual'),new Promise(resolve=>setTimeout(()=>resolve('stalled'),1200))]));
+  assert.equal(metadataOnly,true,'Timestamp and category ordering differences must sync without a choice');
+  assert.equal(await page.getByRole('dialog',{name:/Choose which data to keep/}).isVisible(),false,'Nonessential restock metadata cannot trigger a conflict dialog');
+  assert.equal(await page.evaluate(()=>Boolean(readCloudBaseline('00000000-0000-4000-8000-000000000002'))),true);
+
   // Device-only edit should upload without any choice.
   await page.evaluate(()=>{
    db.meals.push({id:'local-only',name:'Local recipe',category:['Dinner'],ingredients:[],steps:[],servings:2});
