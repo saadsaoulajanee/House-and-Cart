@@ -1716,7 +1716,7 @@ function finishShopping(){
    }
   }
   let extras=[...form.querySelectorAll('.extra-purchase-row')].map(row=>({
-   id:uid(),name:row.querySelector('.extra-name').value.trim(),ingredientId:row.querySelector('.extra-ingredient').value,
+   id:uid(),name:row.querySelector('.extra-name').value.trim(),ingredientId:row.querySelector('select.extra-ingredient').value,
    qty:Number(row.querySelector('.extra-qty').value)||0,unit:row.querySelector('.extra-unit').value.trim(),
    category:row.querySelector('.extra-category').value,price:Number(row.querySelector('.extra-price').value)||0,
    checked:true,source:'extra'
