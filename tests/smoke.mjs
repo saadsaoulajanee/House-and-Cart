@@ -9,7 +9,7 @@ await page.route('https://cdn.jsdelivr.net/npm/@supabase/**',route=>route.abort(
 try {
  await page.goto(origin,{waitUntil:'domcontentloaded'});
  await page.waitForSelector('#mobileNav button');
- assert.match(await page.locator('#appVersion').innerText(),/v3\.9\.1/);
+ assert.match(await page.locator('#appVersion').innerText(),/v3\.9\.2/);
  assert.match(await page.locator('.brand').innerText(),/House & Cart/);
  // The small version badge sits on the same baseline as the app name.
  assert.equal(await page.locator('.brand-name-row #appVersion').count(),1);
@@ -387,6 +387,7 @@ try {
  await testCloudRefreshGuards(browser,origin);
  await testCookingPantryAndLayout(browser,origin);
  await testManualShoppingAndCareSteppers(browser,origin);
+ await testStyledAutocomplete(browser,origin);
  assert.deepEqual(errors,[],'Browser JavaScript exceptions');
  console.log('PASS: Home Care multi-categories, timed restock removal, separate spending history/budget, icons and existing features');
 }finally{
@@ -826,5 +827,59 @@ async function testManualShoppingAndCareSteppers(browser,origin){
   assert.equal(await page.evaluate(()=>db.cleaningInventory[0].qty),0);
   assert.deepEqual(faults,[],'No browser JavaScript exceptions');
   console.log('PASS: manual shopping ingredient search, smart units and quantities, Home Care steppers, threshold automation');
+ }finally{await page.close()}
+}
+
+
+async function testStyledAutocomplete(browser,origin){
+ const page=await browser.newPage({viewport:{width:390,height:844}});
+ const errors=[];page.on('pageerror',e=>errors.push(String(e)));
+ await page.route('https://cdn.jsdelivr.net/npm/@supabase/**',route=>route.abort());
+ try{
+  await page.goto(origin,{waitUntil:'domcontentloaded'});
+  await page.waitForSelector('#mobileNav button');
+  await page.locator('#mobileNav button[data-mobile-view="shop"]').click();
+  await page.getByRole('button',{name:/Add item/}).first().click();
+  const input=page.locator('#manualForm .search-picker input');
+  await input.fill('tom');
+  const list=page.locator('#manualForm .app-autocomplete-menu');
+  assert.equal(await list.isVisible(),true,'Ingredient suggestions appear automatically while typing');
+  assert.equal(await input.getAttribute('list'),null,'Native browser datalist is disabled');
+  assert.ok(await list.locator('.app-autocomplete-option').count()>0);
+  await input.fill('Mil');
+  await list.locator('.app-autocomplete-option',{hasText:'Milk'}).click();
+  assert.equal(await input.inputValue(),'Milk');
+  assert.equal(await page.evaluate(()=>document.querySelector('#manualForm [name="ingredient"]').value===db.ingredients.find(x=>x.name==='Milk').id),true);
+  assert.equal(await list.isVisible(),false,'Clicking a suggestion closes dropdown');
+  await page.locator('#manualShoppingQty').fill('2');
+  await page.locator('#manualForm button[type="submit"]').click();
+
+  // Recipe editor and pantry use the same picker, including keyboard selection.
+  await page.locator('#mobileNav button[data-mobile-view="kitchen"]').click();
+  await page.getByRole('button',{name:/Add to pantry|Add inventory|Add stock/i}).first().click();
+  const pantryInput=page.locator('#inventoryForm .search-picker input');
+  await pantryInput.fill('ric');
+  assert.equal(await page.locator('#inventoryForm .app-autocomplete-menu').isVisible(),true);
+  await pantryInput.press('ArrowDown');
+  await pantryInput.press('Enter');
+  assert.ok((await pantryInput.inputValue()).length>0);
+  await page.keyboard.press('Escape');
+  await page.locator('#modalback .x').click();
+
+  // Home Care names can be picked from essentials and already tracked products.
+  await page.locator('#modeCare').click();
+  await page.locator('#mobileNav button[data-mobile-view="kitchen"]').click();
+  await page.getByRole('button',{name:/Add product/}).click();
+  const careInput=page.locator('#cleanForm input[name="name"]');
+  await careInput.fill('Dish');
+  const careMenu=page.locator('#cleanForm .app-autocomplete-menu');
+  assert.equal(await careMenu.isVisible(),true,'Home Care suggestion list opens automatically');
+  assert.ok(await careMenu.locator('.app-autocomplete-option').count()>0);
+  await careMenu.locator('.app-autocomplete-option').first().click();
+  assert.ok((await careInput.inputValue()).toLowerCase().includes('dish'));
+  await careInput.fill('Completely new product');
+  assert.equal(await careInput.evaluate(el=>el.validity.valid),true,'Home Care still allows custom product names');
+  assert.deepEqual(errors,[],'No JS exceptions during autocomplete');
+  console.log('PASS: styled autocomplete on Kitchen shopping/pantry and Home Care, keyboard and free-text');
  }finally{await page.close()}
 }
