@@ -9,8 +9,29 @@ await page.route('https://cdn.jsdelivr.net/npm/@supabase/**',route=>route.abort(
 try {
  await page.goto(origin,{waitUntil:'domcontentloaded'});
  await page.waitForSelector('#mobileNav button');
- assert.match(await page.locator('#appVersion').innerText(),/v3\.7\.0/);
+ assert.match(await page.locator('#appVersion').innerText(),/v3\.7\.1/);
  assert.match(await page.locator('.brand').innerText(),/House & Cart/);
+ // The small version badge sits on the same baseline as the app name.
+ assert.equal(await page.locator('.brand-name-row #appVersion').count(),1);
+ const headerPosition=await page.evaluate(()=>{
+  const title=document.querySelector('.brand-name-row > span:first-child').getBoundingClientRect();
+  const badge=document.getElementById('appVersion').getBoundingClientRect();
+  return {rightOfName:badge.left>=title.right-1,aligned:Math.abs(badge.top-title.top)<14};
+ });
+ assert.ok(headerPosition.rightOfName&&headerPosition.aligned,'Version badge belongs beside House & Cart');
+ const icons=await page.evaluate(async()=>{
+  const manifest=await fetch('./manifest.json?v=3.7.1').then(r=>r.json());
+  const readIcon=async(src)=>{const img=new Image();img.src=src;await img.decode();return {width:img.naturalWidth,height:img.naturalHeight}};
+  const results=await Promise.all(['./icon-192.png?v=3.7.1','./icon-512.png?v=3.7.1','./icon-maskable-512.png?v=3.7.1','./favicon.png?v=3.7.1','./apple-touch-icon.png?v=3.7.1'].map(readIcon));
+  return {manifest:manifest.icons.map(x=>({src:x.src,sizes:x.sizes,purpose:x.purpose})),sizes:results};
+ });
+ assert.deepEqual(icons.sizes.map(x=>[x.width,x.height]),[[192,192],[512,512],[512,512],[64,64],[180,180]],'Five PNG icons use their declared dimensions');
+ assert.ok(icons.manifest.every(x=>x.src.endsWith('?v=3.7.1')),'Manifest cache-busts new app icons');
+ assert.ok(icons.manifest.some(x=>x.purpose==='maskable'),'Maskable icon included for Android');
+ await page.setViewportSize({width:360,height:740});
+ assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth),true,'Header should fit 360px mobile');
+ await page.setViewportSize({width:390,height:844});
+
  const theme=await page.evaluate(()=>({
   background:getComputedStyle(document.documentElement).getPropertyValue('--bg').trim().toLowerCase(),
   ink:getComputedStyle(document.documentElement).getPropertyValue('--ink').trim().toLowerCase(),
@@ -268,7 +289,7 @@ try {
 
  await testMockCloudSync(browser,origin);
  assert.deepEqual(errors,[],'Browser JavaScript exceptions');
- console.log('PASS: Ink & Champagne theme, compact cloud badge, variations, tags, planner, pantry, family management, swipes and cloud');
+ console.log('PASS: official icon 02 PNG assets, inline version badge, Ink & Champagne and existing features');
 }finally{
  await browser.close();
 }
