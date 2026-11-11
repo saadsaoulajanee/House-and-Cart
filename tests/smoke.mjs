@@ -9,7 +9,7 @@ await page.route('https://cdn.jsdelivr.net/npm/@supabase/**',route=>route.abort(
 try {
  await page.goto(origin,{waitUntil:'domcontentloaded'});
  await page.waitForSelector('#mobileNav button');
- assert.match(await page.locator('#appVersion').innerText(),/v3\.8\.0/);
+ assert.match(await page.locator('#appVersion').innerText(),/v3\.8\.1/);
  assert.match(await page.locator('.brand').innerText(),/House & Cart/);
  // The small version badge sits on the same baseline as the app name.
  assert.equal(await page.locator('.brand-name-row #appVersion').count(),1);
@@ -384,6 +384,7 @@ try {
  await page.screenshot({path:'housecart-desktop.png',fullPage:true});
 
  await testMockCloudSync(browser,origin);
+ await testCloudRefreshGuards(browser,origin);
  assert.deepEqual(errors,[],'Browser JavaScript exceptions');
  console.log('PASS: Home Care multi-categories, timed restock removal, separate spending history/budget, icons and existing features');
 }finally{
@@ -454,12 +455,145 @@ async function testMockCloudSync(browser,origin){
   await dialog.getByRole('button',{name:/Not now/}).click();
   await page.waitForTimeout(1400);
   assert.equal(await dialog.isVisible(),false,'Choosing Not now must not reopen the conflict');
-  await page.evaluate(()=>{syncNow('both')});
+  await page.evaluate(()=>{syncNow('manual')});
   await dialog.waitFor({timeout:15000});
   await dialog.getByRole('button',{name:/Use cloud data/}).click();
   await page.waitForFunction(()=>db.meals.some(m=>m.id==='remote1')&&!db.meals.some(m=>m.id==='local2'),{timeout:15000});
   assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem(RECOVERY_KEY)).payload.meals.some(x=>x.id==='local2')),true,'Recovery snapshot must preserve the local version');
   assert.deepEqual(faults,[],'No JavaScript exceptions in cloud sync');
   console.log('PASS: mocked cloud sync with optimistic updates, conflict cancel and recovery snapshot');
+ }finally{await page.close()}
+}
+
+
+async function testCloudRefreshGuards(browser,origin){
+ const page=await browser.newPage({viewport:{width:390,height:844}});
+ const faults=[];
+ page.on('pageerror',e=>faults.push(String(e)));
+ await page.route('https://cdn.jsdelivr.net/npm/@supabase/**',route=>route.abort());
+ await page.addInitScript(()=>{
+  const user={id:'00000000-0000-4000-8000-000000000002',email:'refresh@example.com'};
+  const copy=value=>JSON.parse(JSON.stringify(value));
+  const state={
+   get row(){try{return JSON.parse(localStorage.getItem('__refreshMockRemote')||'null')}catch(e){return null}},
+   set row(value){localStorage.setItem('__refreshMockRemote',JSON.stringify(value))}
+  };
+  window.__refreshCloud=state;
+  window.__syncReads=0;
+  window.supabase={createClient(){
+   return {
+    auth:{
+     getSession:async()=>({data:{session:{user}},error:null}),
+     onAuthStateChange(callback){
+      setTimeout(()=>{
+       callback('INITIAL_SESSION',{user});
+       callback('SIGNED_IN',{user});
+       callback('TOKEN_REFRESHED',{user});
+      },5);
+      return {data:{subscription:{unsubscribe(){}}}};
+     }
+    },
+    from(){
+     let operation=null,write=null,filters={};
+     const builder={
+      select(){return builder},
+      eq(k,v){filters[k]=v;return builder},
+      is(k,v){filters[k]=v;return builder},
+      update(value){operation='update';write=value;return builder},
+      insert(value){operation='insert';write=value;return builder},
+      async maybeSingle(){window.__syncReads++;return {data:state.row?copy(state.row):null,error:null}},
+      then(resolve,reject){
+       let result;
+       if(operation==='insert'){
+        if(state.row)result={data:null,error:{message:'Row already exists'}};
+        else{state.row=copy(write);result={data:[{updated_at:state.row.updated_at}],error:null}}
+       }else if(operation==='update'){
+        if(!state.row||state.row.updated_at!==filters.updated_at)result={data:[],error:null};
+        else{state.row=copy({...state.row,...write});result={data:[{updated_at:state.row.updated_at}],error:null}}
+       }else result={data:[],error:null};
+       return Promise.resolve(result).then(resolve,reject);
+      }
+     };
+     return builder;
+    },
+    channel(){return {on(){return this},subscribe(){return this}}},
+    removeChannel:async()=>{}
+   }
+  }};
+ });
+ try{
+  await page.goto(origin,{waitUntil:'domcontentloaded'});
+  await page.waitForFunction(()=>document.getElementById('cloudStatusLabel')?.textContent.includes('Cloud synced'));
+  await page.waitForTimeout(150);
+  assert.equal(await page.evaluate(()=>window.__syncReads),1,'Initial auth callback and getSession must not double-sync');
+  assert.ok(await page.evaluate(()=>readCloudBaseline('00000000-0000-4000-8000-000000000002')),'Successful cloud baseline is stored per account');
+  assert.equal(await page.getByRole('dialog',{name:/Choose which data to keep/}).isVisible(),false);
+  await page.reload({waitUntil:'domcontentloaded'});
+  await page.waitForFunction(()=>document.getElementById('cloudStatusLabel')?.textContent.includes('Cloud synced'));
+  await page.waitForTimeout(150);
+  assert.equal(await page.evaluate(()=>window.__syncReads),1,'Refresh must only start one cloud read');
+  assert.equal(await page.getByRole('dialog',{name:/Choose which data to keep/}).isVisible(),false,'Identical saved data must never prompt on refresh');
+  // Updated-at changes are not content changes. Likewise old category schema is equivalent.
+  await page.evaluate(()=>{
+   let row=window.__refreshCloud.row;
+   row.updated_at=new Date(Date.now()+120000).toISOString();
+   delete row.payload.cleaningHistory;
+   delete row.payload.settings.careCategories;
+   delete row.payload.settings.careBudget;
+   delete row.payload.settings.careMonthlyBudgets;
+   for(const item of row.payload.cleaningEssentials)delete item.categories;
+   window.__refreshCloud.row=row;
+  });
+  const equal=await page.evaluate(()=>Promise.race([syncNow('manual'),new Promise(r=>setTimeout(()=>r('stalled'),1200))]));
+  assert.equal(equal,true,'Legacy defaults and timestamp-only changes must compare equal');
+  assert.equal(await page.getByRole('dialog',{name:/Choose which data to keep/}).isVisible(),false);
+  // Device-only edit should upload without any choice.
+  await page.evaluate(()=>{
+   db.meals.push({id:'local-only',name:'Local recipe',category:['Dinner'],ingredients:[],steps:[],servings:2});
+   save();
+  });
+  await page.waitForFunction(()=>window.__refreshCloud.row?.payload.meals?.some(m=>m.id==='local-only'));
+  assert.equal(await page.getByRole('dialog',{name:/Choose which data to keep/}).isVisible(),false);
+  // Cloud-only edit should download automatically with local recovery snapshot.
+  await page.evaluate(()=>{
+   const row=window.__refreshCloud.row;
+   row.payload.meals.push({id:'cloud-only',name:'Cloud recipe',category:['Dinner'],ingredients:[],steps:[],servings:2});
+   row.updated_at=new Date(Date.now()+180000).toISOString();
+   window.__refreshCloud.row=row;
+  });
+  const remoteOnly=await page.evaluate(()=>Promise.race([syncNow('manual'),new Promise(r=>setTimeout(()=>r('stalled'),1200))]));
+  assert.equal(remoteOnly,true,'Remote-only changes download automatically');
+  assert.equal(await page.evaluate(()=>db.meals.some(m=>m.id==='cloud-only')),true);
+  assert.equal(await page.getByRole('dialog',{name:/Choose which data to keep/}).isVisible(),false);
+  // Two actual concurrent edits should show one choice, not two.
+  await page.evaluate(()=>{
+   const row=window.__refreshCloud.row;
+   row.payload.meals.push({id:'cloud-conflict',name:'Cloud conflict',category:['Dinner'],ingredients:[],steps:[],servings:2});
+   row.updated_at=new Date(Date.now()+240000).toISOString();
+   window.__refreshCloud.row=row;
+   db.meals.push({id:'device-conflict',name:'Device conflict',category:['Dinner'],ingredients:[],steps:[],servings:2});
+   save();
+  });
+  const conflict=page.getByRole('dialog',{name:/Choose which data to keep/});
+  await conflict.waitFor({timeout:10000});
+  assert.equal(await page.locator('#modtitle').innerText(),'Choose which data to keep');
+  await conflict.getByRole('button',{name:/Not now/}).click();
+  await page.waitForTimeout(1250);
+  assert.equal(await conflict.isVisible(),false);
+  await page.reload({waitUntil:'domcontentloaded'});
+  await page.waitForTimeout(700);
+  assert.equal(await conflict.isVisible(),false,'A dismissed, unchanged conflict must stay dismissed after refresh');
+  assert.match(await page.locator('#cloudStatusLabel').innerText(),/pending/i);
+  // User-directed Sync now must let them resolve the same conflict.
+  await page.evaluate(()=>{void syncNow('manual')});
+  await conflict.waitFor({timeout:10000});
+  await conflict.getByRole('button',{name:/Use cloud data/}).click();
+  await page.waitForFunction(()=>db.meals.some(m=>m.id==='cloud-conflict')&&!db.meals.some(m=>m.id==='device-conflict'));
+  assert.equal(await page.evaluate(()=>Boolean(readCloudBaseline('00000000-0000-4000-8000-000000000002'))),true);
+  await page.reload({waitUntil:'domcontentloaded'});
+  await page.waitForFunction(()=>document.getElementById('cloudStatusLabel')?.textContent.includes('Cloud synced'));
+  assert.equal(await conflict.isVisible(),false,'After resolving a conflict, refresh must stay silent');
+  assert.deepEqual(faults,[],'No browser exceptions during auth events and refresh conflicts');
+  console.log('PASS: identical refresh, auth-event dedupe, normalized comparison, unilateral changes and one-time true conflicts');
  }finally{await page.close()}
 }

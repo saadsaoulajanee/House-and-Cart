@@ -489,7 +489,7 @@ body{
 </style>
 </head>
 <body><div class="app">
-<header class="top"><div class="brand"><img class="logo brand-logo" src="./icon-192.png?v=3.7.1" width="48" height="48" alt="House & Cart icon"><div class="brand-copy"><div class="brand-name-row"><span style="font-family:Georgia,serif;font-size:27px;font-weight:500;letter-spacing:-1px">House &amp; Cart</span><span class="version-tag" id="appVersion" title="House & Cart app version">v3.8.0</span></div><div class="smalltext" style="letter-spacing:2px;text-transform:uppercase;font-size:9px">Your everyday home companion</div></div></div><div class="top-actions"><span class="pill" id="saveState">Saved on this device</span><button class="btn soft small" onclick="exportData()">Export backup</button><button class="btn ghost small" onclick="document.getElementById('importFile').click()">Import</button><button class="btn green small" onclick="openCloudAccount()">Account & sync</button><input id="importFile" type="file" accept=".json,application/json" hidden></div><button class="mobile-menu-button" type="button" aria-label="Open app menu" onclick="openMoreMenu()">☰ <span>Menu</span></button></header>
+<header class="top"><div class="brand"><img class="logo brand-logo" src="./icon-192.png?v=3.7.1" width="48" height="48" alt="House & Cart icon"><div class="brand-copy"><div class="brand-name-row"><span style="font-family:Georgia,serif;font-size:27px;font-weight:500;letter-spacing:-1px">House &amp; Cart</span><span class="version-tag" id="appVersion" title="House & Cart app version">v3.8.1</span></div><div class="smalltext" style="letter-spacing:2px;text-transform:uppercase;font-size:9px">Your everyday home companion</div></div></div><div class="top-actions"><span class="pill" id="saveState">Saved on this device</span><button class="btn soft small" onclick="exportData()">Export backup</button><button class="btn ghost small" onclick="document.getElementById('importFile').click()">Import</button><button class="btn green small" onclick="openCloudAccount()">Account & sync</button><input id="importFile" type="file" accept=".json,application/json" hidden></div><button class="mobile-menu-button" type="button" aria-label="Open app menu" onclick="openMoreMenu()">☰ <span>Menu</span></button></header>
 <div class="row mode-row" style="justify-content:space-between;align-items:center;margin:8px 0 4px"><div class="tabs" style="margin:0"><button id="modeKitchen" class="active" onclick="setMode('kitchen')">🍋 Kitchen</button><button id="modeCare" onclick="setMode('care')">🧺 Home care</button></div><div class="cloud-status-bar" id="cloudStatusBar" data-state="local" role="status" aria-live="polite"><span class="cloud-status-dot" aria-hidden="true"></span><strong id="cloudStatusLabel">Saved on this device</strong></div><span class="smalltext" id="modeCaption">Recipes, ingredients & weekly rituals</span></div><nav class="nav" id="nav" aria-label="Main navigation"><button data-view="home" class="active">⌂ Overview</button><button data-view="meals">♡ Recipes</button><button data-view="plan">▦ Planner</button><button data-view="shop">🛒 Shopping</button><button data-view="kitchen">🥬 Pantry</button><button data-view="history">↗ History</button><button data-view="cookable" style="display:none">✨ What can I cook?</button><button data-view="budget" style="display:none">◉ Budget</button></nav>
 <main id="main" tabindex="-1"></main></div><nav id="mobileNav" class="mobile-bottom-nav" aria-label="Mobile navigation"></nav>
 <div class="modalback" id="modalback"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="modtitle" tabindex="-1"><div class="modalhead"><h2 id="modtitle">Edit</h2><button class="x" type="button" aria-label="Close dialog" onclick="closeModal()">✕</button></div><div id="modbody"></div></div></div>
@@ -547,20 +547,72 @@ let view='home',mealFilter='All',shopFilter='All',appMode='kitchen';
 const SUPABASE_URL='https://rzoyapskmediiucixekf.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY='sb_publishable_FgN14pLyQz_J1qcO5LuIKA_ZDaKhx2N';
 const sb=window.supabase?.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);
-let cloudUser=null,cloudChannel=null,syncBusy=false,lastCloudPayload=null,syncTimer=null,cloudRemoteUpdatedAt=null;
+let cloudUser=null,cloudChannel=null,syncBusy=false,lastCloudPayload=null,syncTimer=null,cloudRemoteUpdatedAt=null,cloudSessionStartedFor=null,pendingCloudConflict=null;
 const RECOVERY_KEY='housecart_recovery_snapshot_v1',BACKUP_AT_KEY='housecart_last_backup_export',LAST_SYNC_AT_KEY='housecart_last_cloud_sync';
 function stableJson(value){return JSON.stringify(value,(key,item)=>item&&typeof item==='object'&&!Array.isArray(item)?Object.keys(item).sort().reduce((out,k)=>(out[k]=item[k],out),{}):item)}
-function meaningfulHomeData(p){return !!(p?.meals?.length||p?.inventory?.length||p?.shopping?.length||p?.history?.length||p?.cleaningInventory?.length||p?.cleaningShopping?.length||Object.keys(p?.plan||{}).length||p?.ingredients?.some(i=>i.custom))}
+
+/* Stable, non-mutating comparison across compatible saved-data versions. */
+const SYNC_COLLECTION_KEYS=['meals','cleaningInventory','cleaningShopping','cleaningHistory','cleaningEssentials','ingredients','inventory','shopping','history'];
+const CLOUD_SYNC_BASELINE_PREFIX='housecart_cloud_baseline_v2_';
+const CLOUD_CONFLICT_SNOOZE_PREFIX='housecart_cloud_conflict_dismissed_v1_';
+function comparableCloudPayload(value){
+ const source=value&&typeof value==='object'?value:{};
+ const result={};
+ for(const key of SYNC_COLLECTION_KEYS)result[key]=Array.isArray(source[key])?JSON.parse(JSON.stringify(source[key])):[];
+ result.plan=source.plan&&typeof source.plan==='object'&&!Array.isArray(source.plan)?JSON.parse(JSON.stringify(source.plan)):{};
+ const settings=source.settings&&typeof source.settings==='object'&&!Array.isArray(source.settings)?JSON.parse(JSON.stringify(source.settings)):{};
+ result.settings={currency:'EUR',store:'',budget:80,careBudget:100,careMonthlyBudgets:{},careCategories:[...new Set(CLEAN_ESSENTIALS.map(row=>row[1]))],...settings};
+ if(!Array.isArray(result.settings.careCategories))result.settings.careCategories=[...new Set(CLEAN_ESSENTIALS.map(row=>row[1]))];
+ if(!result.settings.careMonthlyBudgets||typeof result.settings.careMonthlyBudgets!=='object')result.settings.careMonthlyBudgets={};
+ for(const key of ['cleaningInventory','cleaningShopping','cleaningEssentials']){
+  for(const item of result[key]){
+   if(!Array.isArray(item.categories))item.categories=item.category?[item.category]:[];
+   if(!item.category)item.category=item.categories[0]||'Other';
+   for(const cat of item.categories){
+    if(!result.settings.careCategories.some(x=>norm(x)===norm(cat)))result.settings.careCategories.push(cat);
+   }
+   if(key==='cleaningShopping'&&!item.checked)delete item.checkedAt;
+  }
+ }
+ return result;
+}
+function comparableCloudText(payload){return stableJson(comparableCloudPayload(payload))}
+function cloudBaselineKey(userId){return CLOUD_SYNC_BASELINE_PREFIX+userId}
+function cloudConflictKey(userId){return CLOUD_CONFLICT_SNOOZE_PREFIX+userId}
+function readCloudBaseline(userId){
+ try{return userId?localStorage.getItem(cloudBaselineKey(userId)):null}catch(e){console.warn('Cloud baseline unavailable',e);return null}
+}
+function persistCloudBaseline(userId,comparison){
+ if(!userId)return;
+ try{localStorage.setItem(cloudBaselineKey(userId),comparison)}catch(e){console.warn('Could not persist cloud baseline; using current session only',e)}
+}
+function fingerprintCloudText(value){
+ let a=2166136261,b=5381;
+ for(let i=0;i<value.length;i++){const c=value.charCodeAt(i);a=Math.imul(a^c,16777619);b=Math.imul(b,33)^c}
+ return value.length+':'+(a>>>0).toString(36)+':'+(b>>>0).toString(36);
+}
+function conflictPairToken(local,remote){return fingerprintCloudText(local)+'|'+fingerprintCloudText(remote)}
+function conflictIsDismissed(userId,token){try{return localStorage.getItem(cloudConflictKey(userId))===token}catch(e){return false}}
+function dismissConflict(userId,token){try{localStorage.setItem(cloudConflictKey(userId),token)}catch(e){console.warn(e)}}
+function clearDismissedConflict(userId){try{if(userId)localStorage.removeItem(cloudConflictKey(userId))}catch(e){console.warn(e)}}
+
+function meaningfulHomeData(p){
+ if(p?.meals?.length||p?.inventory?.length||p?.shopping?.length||p?.history?.length||p?.cleaningInventory?.length||p?.cleaningShopping?.length||p?.cleaningHistory?.length||Object.keys(p?.plan||{}).length||p?.ingredients?.some(i=>i.custom))return true;
+ if(p?.cleaningEssentials?.some(item=>!CLEAN_ESSENTIALS.some(defaultItem=>norm(defaultItem[0])===norm(item.name))))return true;
+ if(p?.settings?.careCategories?.some(cat=>!CLEAN_ESSENTIALS.some(defaultItem=>norm(defaultItem[1])===norm(cat))))return true;
+ return false;
+}
 function snapshotForRecovery(reason='Before a change'){try{const old=localStorage.getItem(RECOVERY_KEY);const entry=JSON.stringify({created_at:new Date().toISOString(),reason,payload:cloudPayload()});localStorage.setItem(RECOVERY_KEY,entry);return true}catch(e){console.warn('Unable to save recovery snapshot',e);return false}}
 function lastSyncText(){let raw=localStorage.getItem(LAST_SYNC_AT_KEY);return raw?new Date(raw).toLocaleString(undefined,{dateStyle:'medium',timeStyle:'short'}):'Not yet'}
-function markCloudSynced(payload,updatedAt){lastCloudPayload=stableJson(payload);cloudRemoteUpdatedAt=updatedAt||new Date().toISOString();localStorage.setItem(LAST_SYNC_AT_KEY,new Date().toISOString());const status=document.getElementById('saveState');if(status)status.textContent='✓ Cloud synced';refreshCloudStatus()}
+function markCloudSynced(payload,updatedAt){lastCloudPayload=comparableCloudText(payload);persistCloudBaseline(cloudUser?.id,lastCloudPayload);clearDismissedConflict(cloudUser?.id);cloudRemoteUpdatedAt=updatedAt||new Date().toISOString();localStorage.setItem(LAST_SYNC_AT_KEY,new Date().toISOString());const status=document.getElementById('saveState');if(status)status.textContent='✓ Cloud synced';refreshCloudStatus()}
 
 function save(){localStorage.setItem(KEY,JSON.stringify(db));let s=document.getElementById('saveState');if(s)s.textContent=cloudUser?'Saved locally · cloud sync pending':'Saved on this device';if(cloudUser)scheduleCloudSync()}
 function cloudPayload(){return {meals:db.meals,cleaningInventory:db.cleaningInventory,cleaningShopping:db.cleaningShopping,cleaningHistory:db.cleaningHistory,cleaningEssentials:db.cleaningEssentials,ingredients:db.ingredients,inventory:db.inventory,plan:db.plan,shopping:db.shopping,history:db.history,settings:db.settings}}
 function scheduleCloudSync(){clearTimeout(syncTimer);syncTimer=setTimeout(()=>syncNow('push'),900)}
 
 function chooseCloudConflict(){
- return new Promise(resolve=>{
+ if(pendingCloudConflict)return pendingCloudConflict;
+ pendingCloudConflict=new Promise(resolve=>{
   const notice='<p class="sub">House & Cart found different data on this device and in your cloud account. Neither version will be replaced until you choose.</p>'+
    '<div class="sync-conflict-options">'+
    '<button type="button" class="sync-conflict-choice" onclick="window._houseCartConflictChoice(\'cloud\')"><b>☁ Use cloud data</b><small>Download the cloud version onto this device. A recovery snapshot will be saved first.</small></button>'+
@@ -570,10 +622,12 @@ function chooseCloudConflict(){
   window._houseCartConflictChoice=(choice,noClose=false)=>{
    window._houseCartConflictChoice=null;
    if(!noClose)closeModal();
+   pendingCloudConflict=null;
    resolve(choice);
   };
   showModal('Choose which data to keep',notice);
  });
+ return pendingCloudConflict;
 }
 async function syncNow(mode='both'){
  if(!sb||!cloudUser||syncBusy)return false;
@@ -584,8 +638,8 @@ async function syncNow(mode='both'){
  try{
   const {data:remote,error}=await sb.from('mealcart_sync_state').select('payload,updated_at').eq('owner_id',cloudUser.id).maybeSingle();
   if(error)throw error;
-  const local=cloudPayload(),localText=stableJson(local);
-  const remoteText=remote?.payload?stableJson(remote.payload):null;
+  const local=cloudPayload(),localText=comparableCloudText(local);
+  const remoteText=remote?.payload?comparableCloudText(remote.payload):null;
   let action='none';
   if(!remoteText)action='upload';
   else if(remoteText===localText)action='none';
@@ -593,7 +647,15 @@ async function syncNow(mode='both'){
   else if(remoteText===lastCloudPayload)action='upload';
   else if(localText===lastCloudPayload)action='download';
   else action='choose';
-  if(action==='choose'){let picked=await chooseCloudConflict();action=picked==='local'?'upload':picked==='cloud'?'download':'cancel'}
+  if(action==='choose'){
+   const conflictToken=conflictPairToken(localText,remoteText);
+   if(mode!=='manual'&&conflictIsDismissed(cloudUser.id,conflictToken)){action='cancel'}
+   else{
+    const picked=await chooseCloudConflict();
+    if(picked==='cancel')dismissConflict(cloudUser.id,conflictToken);
+    action=picked==='local'?'upload':picked==='cloud'?'download':'cancel';
+   }
+  }
   if(action==='cancel'){
    if(status)status.textContent='Cloud sync pending · choose a version';
    return false;
@@ -628,14 +690,66 @@ async function syncNow(mode='both'){
   return false;
  }finally{
   syncBusy=false;
-  if(syncCompleted&&lastCloudPayload&&stableJson(cloudPayload())!==lastCloudPayload&&navigator.onLine){if(status)status.textContent='Cloud sync pending';scheduleCloudSync()}
+  if(syncCompleted&&lastCloudPayload&&comparableCloudText(cloudPayload())!==lastCloudPayload&&navigator.onLine){if(status)status.textContent='Cloud sync pending';scheduleCloudSync()}
   refreshCloudStatus();
  }
 }
-function applyCloudPayload(p){if(!p||!Array.isArray(p.meals)||!Array.isArray(p.ingredients))throw Error('Cloud data format is invalid');const restored={...fresh(),...p};localStorage.setItem(KEY,JSON.stringify(restored));db=restored;migrateCareData();lastCloudPayload=stableJson(cloudPayload());render();if(typeof purgeExpiredCareRestock==='function')purgeExpiredCareRestock()}
-async function openCloudAccount(){if(!sb){alert('Cloud service is unavailable.');return}const {data:{session},error}=await sb.auth.getSession();if(error){alert(error.message);return}if(session){cloudUser=session.user;showModal('House & Cart account',`<p class="sub">Signed in as <b>${esc(cloudUser.email||'')}</b></p><p class="smalltext">Your data is stored in your private House & Cart cloud account.</p><p class="smalltext"><b>Last successful sync:</b> ${esc(lastSyncText())}</p><div class="row"><button class="btn green" id="syncNowBtn">Sync now</button><button class="btn danger" id="signoutBtn">Sign out</button></div>`);document.getElementById('syncNowBtn').onclick=async()=>{closeModal();await syncNow('both')};document.getElementById('signoutBtn').onclick=async()=>{await sb.auth.signOut();cloudUser=null;lastCloudPayload=null;if(cloudChannel)await sb.removeChannel(cloudChannel);cloudChannel=null;closeModal();let el=document.getElementById('saveState');if(el)el.textContent='Saved on this device'};return}showModal('Sign in to Meal Cart',`<p class="sub">Enter your email and we’ll send a secure sign-in link.</p><form id="cloudLogin"><div class="field"><label>Email address</label><input name="email" type="email" required placeholder="you@example.com"></div><button class="btn green">Send sign-in link</button></form>`);document.getElementById('cloudLogin').onsubmit=async e=>{e.preventDefault();const email=new FormData(e.target).get('email');const {error}=await sb.auth.signInWithOtp({email,options:{emailRedirectTo:location.href}});if(error)alert(error.message);else{closeModal();alert('Sign-in link sent. Open it in this same browser, then return to Meal Cart.')}}}
-async function initializeCloud(){if(!sb)return;const {data:{session}}=await sb.auth.getSession();if(session){cloudUser=session.user;await syncNow('both');startRealtime()}sb.auth.onAuthStateChange(async(_event,session)=>{if(session){cloudUser=session.user;await syncNow('both');startRealtime()}else{cloudUser=null;lastCloudPayload=null;if(cloudChannel)await sb.removeChannel(cloudChannel);cloudChannel=null;refreshCloudStatus()}})}
-async function startRealtime(){if(!cloudUser||!sb)return;if(cloudChannel)await sb.removeChannel(cloudChannel);cloudChannel=sb.channel('mealcart-sync-'+cloudUser.id).on('postgres_changes',{event:'*',schema:'public',table:'mealcart_sync_state',filter:'owner_id=eq.'+cloudUser.id},payload=>{const remote=payload.new?.payload;if(!remote||syncBusy)return;if(stableJson(cloudPayload())===lastCloudPayload){if(stableJson(remote)!==lastCloudPayload){try{if(!snapshotForRecovery('Before realtime cloud update'))throw Error('Recovery snapshot unavailable');applyCloudPayload(remote);markCloudSynced(remote,payload.new?.updated_at)}catch(e){console.error(e);let el=document.getElementById('saveState');if(el)el.textContent='Cloud changed · sync to resolve'}}}else{let el=document.getElementById('saveState');if(el)el.textContent='Cloud changed · sync to resolve'}}).subscribe()}
+function applyCloudPayload(p){if(!p||!Array.isArray(p.meals)||!Array.isArray(p.ingredients))throw Error('Cloud data format is invalid');const restored={...fresh(),...p};localStorage.setItem(KEY,JSON.stringify(restored));db=restored;migrateCareData();lastCloudPayload=comparableCloudText(cloudPayload());render();if(typeof purgeExpiredCareRestock==='function')purgeExpiredCareRestock()}
+async function openCloudAccount(){if(!sb){alert('Cloud service is unavailable.');return}const {data:{session},error}=await sb.auth.getSession();if(error){alert(error.message);return}if(session){cloudUser=session.user;showModal('House & Cart account',`<p class="sub">Signed in as <b>${esc(cloudUser.email||'')}</b></p><p class="smalltext">Your data is stored in your private House & Cart cloud account.</p><p class="smalltext"><b>Last successful sync:</b> ${esc(lastSyncText())}</p><div class="row"><button class="btn green" id="syncNowBtn">Sync now</button><button class="btn danger" id="signoutBtn">Sign out</button></div>`);document.getElementById('syncNowBtn').onclick=async()=>{closeModal();await syncNow('manual')};document.getElementById('signoutBtn').onclick=async()=>{await sb.auth.signOut();cloudUser=null;cloudSessionStartedFor=null;lastCloudPayload=null;if(cloudChannel)await sb.removeChannel(cloudChannel);cloudChannel=null;closeModal();let el=document.getElementById('saveState');if(el)el.textContent='Saved on this device'};return}showModal('Sign in to Meal Cart',`<p class="sub">Enter your email and we’ll send a secure sign-in link.</p><form id="cloudLogin"><div class="field"><label>Email address</label><input name="email" type="email" required placeholder="you@example.com"></div><button class="btn green">Send sign-in link</button></form>`);document.getElementById('cloudLogin').onsubmit=async e=>{e.preventDefault();const email=new FormData(e.target).get('email');const {error}=await sb.auth.signInWithOtp({email,options:{emailRedirectTo:location.href}});if(error)alert(error.message);else{closeModal();alert('Sign-in link sent. Open it in this same browser, then return to Meal Cart.')}}}
+
+async function activateCloudSession(session){
+ const user=session?.user;
+ if(!user?.id||cloudSessionStartedFor===user.id)return;
+ cloudSessionStartedFor=user.id;
+ cloudUser=user;
+ lastCloudPayload=readCloudBaseline(user.id);
+ try{
+  await syncNow('both');
+  if(cloudSessionStartedFor===user.id)await startRealtime();
+ }catch(e){console.error('Could not initialise cloud session',e);refreshCloudStatus()}
+}
+async function initializeCloud(){
+ if(!sb)return;
+ try{
+  const {data,error}=await sb.auth.getSession();
+  if(error)throw error;
+  if(data?.session)await activateCloudSession(data.session);
+ }catch(e){console.error('Could not read cloud session',e)}
+ sb.auth.onAuthStateChange((event,session)=>{
+  if(event==='SIGNED_OUT'){
+   cloudSessionStartedFor=null;cloudUser=null;lastCloudPayload=null;
+   if(window._houseCartConflictChoice)window._houseCartConflictChoice('cancel');
+   if(cloudChannel){const previous=cloudChannel;cloudChannel=null;Promise.resolve(sb.removeChannel(previous)).catch(console.error)}
+   refreshCloudStatus();
+  }else if(session?.user?.id&&session.user.id!==cloudSessionStartedFor){
+   // Supabase emits INITIAL_SESSION/SIGNED_IN and token events on refresh.
+   // Defer work outside the auth callback and activate each user exactly once.
+   setTimeout(()=>{if(session.user.id!==cloudSessionStartedFor)void activateCloudSession(session)},0);
+  }
+ });
+}
+async function startRealtime(){
+ if(!cloudUser||!sb)return;
+ if(cloudChannel)await sb.removeChannel(cloudChannel);
+ cloudChannel=sb.channel('mealcart-sync-'+cloudUser.id).on('postgres_changes',{
+  event:'*',schema:'public',table:'mealcart_sync_state',filter:'owner_id=eq.'+cloudUser.id
+ },payload=>{
+  const remote=payload.new?.payload;
+  if(!remote||syncBusy)return;
+  const remoteText=comparableCloudText(remote),localText=comparableCloudText(cloudPayload());
+  if(remoteText===localText){
+   markCloudSynced(remote,payload.new?.updated_at);
+  }else if(lastCloudPayload&&localText===lastCloudPayload){
+   try{
+    if(!snapshotForRecovery('Before realtime cloud update'))throw Error('Recovery snapshot unavailable');
+    applyCloudPayload(remote);
+    markCloudSynced(remote,payload.new?.updated_at);
+   }catch(e){console.error(e);const el=document.getElementById('saveState');if(el)el.textContent='Cloud changed · sync to resolve'}
+  }else{
+   const el=document.getElementById('saveState');if(el)el.textContent='Cloud changed · sync to resolve';
+  }
+ }).subscribe();
+}
 window.addEventListener('online',()=>{if(cloudUser)syncNow('both')});
 
 function refreshCloudStatus(){
@@ -651,7 +765,7 @@ function refreshCloudStatus(){
  else{state='pending';message='Cloud connected';hint='Tap Sync now to verify the latest changes'}
  bar.dataset.state=state;label.textContent=message;bar.title='Cloud status: '+message+'. Last successful sync: '+lastSyncText();
 }
-function cloudSyncAction(){if(cloudUser)syncNow('both');else openCloudAccount()}
+function cloudSyncAction(){if(cloudUser)syncNow('manual');else openCloudAccount()}
 window.addEventListener('offline',refreshCloudStatus);
 window.addEventListener('online',()=>setTimeout(refreshCloudStatus,0));
 const cloudStatusObserver=new MutationObserver(refreshCloudStatus);
@@ -1226,7 +1340,7 @@ function addManualInventoryFromName(name){let ing=canonicalize(name);db.inventor
 function imageData(file,max=700,quality=.78){return new Promise((resolve,reject)=>{let reader=new FileReader();reader.onload=()=>{let im=new Image();im.onload=()=>{let scale=Math.min(1,max/Math.max(im.width,im.height)),c=document.createElement('canvas');c.width=Math.round(im.width*scale);c.height=Math.round(im.height*scale);c.getContext('2d').drawImage(im,0,0,c.width,c.height);resolve(c.toDataURL('image/jpeg',quality))};im.onerror=reject;im.src=reader.result};reader.onerror=reject;reader.readAsDataURL(file)})}
 function enhanceSelects(root){root.querySelectorAll('select:not([hidden])').forEach(sel=>{if(sel.dataset.enhanced)return;sel.dataset.enhanced='1';let multi=sel.multiple||sel.dataset.multi==='true';if(multi)sel.multiple=true;sel.classList.add('styled-select-native');let wrap=document.createElement('div');wrap.className='styled-select';let trigger=document.createElement('button');trigger.type='button';trigger.className='styled-select-trigger';let label=document.createElement('span');let menu=document.createElement('div');menu.className='styled-select-menu';function update(){let chosen=[...sel.selectedOptions].map(o=>o.textContent);label.textContent=chosen.length?(multi?chosen.join(' · '):chosen[0]):(sel.options[0]?.textContent||'Choose…');menu.querySelectorAll('button').forEach((b,i)=>{let on=sel.options[i].selected;b.classList.toggle('selected',on);b.innerHTML=esc(sel.options[i].textContent)+(on?'<span class="tick">✓</span>':'')})}trigger.append(label);trigger.addEventListener('click',()=>{document.querySelectorAll('.styled-select.open').forEach(x=>{if(x!==wrap)x.classList.remove('open')});wrap.classList.toggle('open')});[...sel.options].forEach((opt,i)=>{let b=document.createElement('button');b.type='button';b.className='styled-select-option';b.textContent=opt.textContent;b.addEventListener('click',()=>{if(multi){opt.selected=!opt.selected;update()}else{sel.value=opt.value;update();wrap.classList.remove('open')}sel.dispatchEvent(new Event('change',{bubbles:true}))});menu.append(b)});wrap.append(trigger,menu);sel.insertAdjacentElement('afterend',wrap);update()});if(!root.dataset.selectCloser){root.dataset.selectCloser='1';root.addEventListener('click',e=>{if(!e.target.closest('.styled-select'))root.querySelectorAll('.styled-select.open').forEach(x=>x.classList.remove('open'))})}}
 function showModal(title,body){document.getElementById('modtitle').textContent=title;document.getElementById('modbody').innerHTML=body;document.getElementById('modalback').classList.add('show');enhanceSelects(document.getElementById('modbody'))}
-function closeModal(){document.getElementById('modalback').classList.remove('show')}
+function closeModal(){if(window._houseCartConflictChoice)window._houseCartConflictChoice('cancel',true);document.getElementById('modalback').classList.remove('show')}
 function go(v){view=v;render()}
 function exportData(){let blob=new Blob([JSON.stringify(db,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='house-and-cart-backup-'+new Date().toISOString().slice(0,10)+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);localStorage.setItem(BACKUP_AT_KEY,new Date().toISOString());updateBackupNotice()}
 document.getElementById('importFile').onchange=async e=>{let f=e.target.files[0];if(!f)return;try{let x=JSON.parse(await f.text());if(!Array.isArray(x.meals)||!Array.isArray(x.ingredients))throw Error('Not a Meal Cart backup');if(!confirm('Replace this device data with the imported backup?'))return;if(!snapshotForRecovery('Before manual backup import')){alert('A recovery snapshot could not be saved. Please download your current backup first.');return}const restored={...fresh(),...x};localStorage.setItem(KEY,JSON.stringify(restored));db=restored;migrateCareData();save();render();alert('Backup imported.')}catch(err){alert(err.message)}e.target.value=''};
