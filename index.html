@@ -1420,6 +1420,9 @@ function syncSearchPicker(input){
   input.setCustomValidity('');
   if(match)input.dispatchEvent(new Event('change',{bubbles:true}));
  }else input.setCustomValidity(input.value&&!match?'Choose an item from the suggestions.':'');
+ // When the complete name is already an exact match, no need to leave the
+ // floating suggestion menu covering the next field.
+ if(match){hideSearchSuggestions();return}
  renderSearchSuggestions(input);
 }
 function chooseSearchSuggestion(input,value){
