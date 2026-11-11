@@ -9,7 +9,7 @@ await page.route('https://cdn.jsdelivr.net/npm/@supabase/**',route=>route.abort(
 try {
  await page.goto(origin,{waitUntil:'domcontentloaded'});
  await page.waitForSelector('#mobileNav button');
- assert.match(await page.locator('#appVersion').innerText(),/v3\.9\.1/);
+ assert.match(await page.locator('#appVersion').innerText(),/v3\.9\.2/);
  assert.match(await page.locator('.brand').innerText(),/House & Cart/);
  // The small version badge sits on the same baseline as the app name.
  assert.equal(await page.locator('.brand-name-row #appVersion').count(),1);
@@ -387,6 +387,7 @@ try {
  await testCloudRefreshGuards(browser,origin);
  await testCookingPantryAndLayout(browser,origin);
  await testManualShoppingAndCareSteppers(browser,origin);
+ await testStyledAutocompleteAcrossApp(browser,origin);
  assert.deepEqual(errors,[],'Browser JavaScript exceptions');
  console.log('PASS: Home Care multi-categories, timed restock removal, separate spending history/budget, icons and existing features');
 }finally{
@@ -751,7 +752,8 @@ async function testManualShoppingAndCareSteppers(browser,origin){
   await page.getByRole('button',{name:/Add item/}).first().click();
   const form=page.locator('#manualForm');
   assert.equal(await form.isVisible(),true);
-  assert.equal(await form.locator('.search-picker input').getAttribute('list')!==null,true,'Search bar suggests library ingredients');
+  assert.equal(await form.locator('.search-picker input').getAttribute('role'),'combobox','Search input uses accessible styled suggestions instead of native datalist');
+  assert.equal(await form.locator('.search-picker input').getAttribute('list'),null,'Native browser datalist is no longer used');
   await form.locator('.search-picker input').fill('Milk');
   assert.equal(await page.evaluate(()=>document.querySelector('#manualForm [name="ingredient"]').value===db.ingredients.find(i=>i.name==='Milk').id),true);
   assert.match(await page.locator('#manualShoppingIngredientHint').innerText(),/Suggested unit: l/,'Existing pantry stock suggests unit');
@@ -826,5 +828,135 @@ async function testManualShoppingAndCareSteppers(browser,origin){
   assert.equal(await page.evaluate(()=>db.cleaningInventory[0].qty),0);
   assert.deepEqual(faults,[],'No browser JavaScript exceptions');
   console.log('PASS: manual shopping ingredient search, smart units and quantities, Home Care steppers, threshold automation');
+ }finally{await page.close()}
+}
+
+
+async function testStyledAutocompleteAcrossApp(browser,origin){
+ const page=await browser.newPage({viewport:{width:390,height:844},deviceScaleFactor:2});
+ const faults=[];
+ page.on('pageerror',e=>faults.push(String(e)));
+ await page.route('https://cdn.jsdelivr.net/npm/@supabase/**',route=>route.abort());
+ try{
+  await page.goto(origin,{waitUntil:'domcontentloaded'});
+  await page.waitForSelector('#mobileNav button');
+  // Kitchen: search suggestions should be visible as you type, styled,
+  // touch-selectable, and not rely on Android's native datalist behavior.
+  await page.locator('#mobileNav button[data-mobile-view="shop"]').click();
+  await page.getByRole('button',{name:/Add item/}).first().click();
+  const search=page.locator('#manualForm .search-picker input[role="combobox"]');
+  assert.equal(await search.getAttribute('list'),null);
+  await search.fill('Mil');
+  const popup=page.locator('#searchSuggestionPopup');
+  assert.equal(await popup.isVisible(),true,'Suggestions pop open while typing');
+  assert.match(await popup.innerText(),/Milk/);
+  assert.equal(await search.getAttribute('aria-expanded'),'true');
+  const styles=await popup.evaluate(el=>({position:getComputedStyle(el).position,z:Number(getComputedStyle(el).zIndex),background:getComputedStyle(el).backgroundColor,rect:el.getBoundingClientRect().toJSON()}));
+  assert.equal(styles.position,'fixed');
+  assert.ok(styles.z>20,'Suggestions float above the modal overlay');
+  assert.ok(styles.rect.left>=0&&styles.rect.right<=391,'Dropdown fits 390px mobile viewport');
+  await popup.getByRole('option',{name:/Milk/}).first().click();
+  assert.equal(await search.inputValue(),'Milk');
+  assert.equal(await search.getAttribute('aria-expanded'),'false');
+  assert.equal(await page.evaluate(()=>document.querySelector('#manualForm [name="ingredient"]').value===db.ingredients.find(x=>x.name==='Milk').id),true);
+  assert.match(await page.locator('#manualShoppingIngredientHint').innerText(),/Suggested unit/);
+  await page.locator('#manualForm button[type="submit"]').evaluate(el=>el.scrollIntoView({block:'nearest'}));
+  await page.locator('#manualShoppingQty').fill('2');
+  await page.locator('#manualForm button[type="submit"]').click();
+  assert.equal(await page.evaluate(()=>db.shopping[0].ingredientId===db.ingredients.find(x=>x.name==='Milk').id),true);
+
+  // Keyboard navigation works for large ingredient lists.
+  await page.getByRole('button',{name:/Add item/}).first().click();
+  const keyboard=page.locator('#manualForm .search-picker input');
+  await keyboard.fill('Cinn');
+  assert.equal(await popup.isVisible(),true);
+  await keyboard.press('ArrowDown');
+  assert.equal(await keyboard.getAttribute('aria-activedescendant'),'search-suggestion-option-0');
+  await keyboard.press('Enter');
+  assert.equal(await keyboard.inputValue(),'Cinnamon');
+  assert.equal(await popup.isVisible(),false);
+  await page.locator('#modalback .x').click();
+
+  // Kitchen Pantry ingredient picker and recipe editor share this component.
+  await page.locator('#mobileNav button[data-mobile-view="kitchen"]').click();
+  await page.getByRole('button',{name:/Add inventory/}).click();
+  const pantry=page.locator('#inventoryForm .search-picker input');
+  await pantry.fill('Chi');
+  assert.equal(await popup.isVisible(),true);
+  assert.match(await popup.innerText(),/Chickpeas/);
+  await popup.getByRole('option',{name:/Chickpeas/}).click();
+  assert.equal(await page.evaluate(()=>document.querySelector('#inventoryForm [name="ingredient"]').value===db.ingredients.find(i=>i.name==='Chickpeas').id),true);
+  await page.locator('#modalback .x').click();
+  await page.locator('#mobileNav button[data-mobile-view="meals"]').click();
+  await page.getByRole('button',{name:/Create meal/}).click();
+  await page.getByRole('button',{name:/Add ingredient/}).click();
+  const recipe=page.locator('#mealIngredients .ingredient-row .search-picker input').first();
+  await recipe.fill('Sal');
+  assert.equal(await popup.isVisible(),true);
+  assert.match(await popup.innerText(),/Salmon/);
+  await popup.getByRole('option',{name:/Salmon/}).first().click();
+  assert.equal(await page.evaluate(()=>document.querySelector('#mealIngredients .ingredient-row .ing-choice').value===db.ingredients.find(i=>i.name==='Salmon').id),true);
+  await page.locator('#modalback .x').click();
+
+  // Kitchen Finish Shopping uses an optional searchable ingredient linker.
+  await page.evaluate(()=>{
+   db.shopping=[{id:'finish-check',name:'Milk',ingredientId:db.ingredients.find(x=>x.name==='Milk').id,checked:true,qty:1,unit:'l',category:'Dairy & eggs',source:'manual',price:1.5}];
+   save();render();
+  });
+  await page.evaluate(()=>finishShopping());
+  const finish=page.locator('#finishForm .purchase-ingredient-picker input');
+  assert.equal(await finish.count(),1);
+  await finish.fill('Butter');
+  assert.match(await popup.innerText(),/Butter/);
+  await popup.getByRole('option',{name:/Butter/}).first().click();
+  assert.equal(await page.evaluate(()=>document.querySelector('#finishForm [name="ingredient_0"]').value===db.ingredients.find(x=>x.name==='Butter').id),true);
+  await page.getByRole('button',{name:/Add extra/}).click();
+  const extraName=page.locator('#extraPurchases .extra-name');
+  await extraName.fill('Chick');
+  assert.equal(await popup.isVisible(),true,'Extra purchased items also suggest ingredients');
+  await popup.getByRole('option',{name:/Chickpeas/}).first().click();
+  assert.equal(await extraName.inputValue(),'Chickpeas');
+  assert.equal(await page.evaluate(()=>document.querySelector('#extraPurchases .extra-ingredient').value===db.ingredients.find(x=>x.name==='Chickpeas').id),true);
+  await page.locator('#modalback .x').click();
+
+  // Home Care Cupboard: existing products suggested, categories filled,
+  // while genuinely new names remain possible.
+  await page.locator('#modeCare').click();
+  await page.locator('#mobileNav button[data-mobile-view="kitchen"]').click();
+  await page.getByRole('button',{name:/Add product/}).click();
+  const care=page.locator('#cleanForm .care-product-picker input');
+  await care.fill('Dishw');
+  assert.equal(await popup.isVisible(),true);
+  assert.match(await popup.innerText(),/Dishwashing liquid/);
+  await popup.getByRole('option',{name:/Dishwashing liquid/}).first().click();
+  assert.equal(await care.inputValue(),'Dishwashing liquid');
+  assert.equal(await page.locator('#cleanForm .care-cat-chip',{hasText:'Kitchen cleaning'}).locator('input').isChecked(),true,'Suggested care product keeps its category');
+  await care.fill('Unique all-purpose spray 999');
+  assert.match(await popup.innerText(),/No existing matches/);
+  assert.equal(await care.evaluate(x=>x.validity.valid),true,'New Home Care product names remain valid');
+  await page.locator('#modalback .x').click();
+
+  // Home Care Restock: suggestions also appear for product names.
+  await page.locator('#mobileNav button[data-mobile-view="shop"]').click();
+  await page.getByRole('button',{name:/Add item/}).first().click();
+  const restock=page.locator('#cleanAddForm .care-restock-picker input');
+  await restock.fill('Dishw');
+  assert.match(await popup.innerText(),/Dishwashing liquid/);
+  await popup.getByRole('option',{name:/Dishwashing liquid/}).first().click();
+  assert.equal(await page.locator('#cleanAddForm .care-cat-chip',{hasText:'Kitchen cleaning'}).locator('input').isChecked(),true);
+  await page.locator('#modalback .x').click();
+
+  // Home Care Essentials: the same suggestions panel.
+  await page.locator('#mobileNav button[data-mobile-view="meals"]').click();
+  await page.getByRole('button',{name:/Add essential/}).click();
+  const essential=page.locator('#essentialForm .care-essential-picker input');
+  await essential.fill('Dishw');
+  assert.equal(await popup.isVisible(),true);
+  assert.match(await popup.innerText(),/Dishwashing liquid/);
+  await essential.press('Escape');
+  assert.equal(await popup.isVisible(),false);
+  await page.locator('#modalback .x').click();
+  assert.deepEqual(faults,[],'No browser JavaScript exceptions from autocomplete');
+  console.log('PASS: styled mobile suggestions in Kitchen shopping, pantry, recipes, purchase linking and Home Care');
  }finally{await page.close()}
 }
