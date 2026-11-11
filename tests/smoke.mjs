@@ -906,7 +906,7 @@ async function testStyledAutocompleteAcrossApp(browser,origin){
   await page.evaluate(()=>finishShopping());
   const finish=page.locator('#finishForm .purchase-ingredient-picker input');
   assert.equal(await finish.count(),1);
-  await finish.fill('Butter');
+  await finish.fill('But');
   assert.match(await popup.innerText(),/Butter/);
   await popup.getByRole('option',{name:/Butter/}).first().click();
   assert.equal(await page.evaluate(()=>document.querySelector('#finishForm [name="ingredient_0"]').value===db.ingredients.find(x=>x.name==='Butter').id),true);
