@@ -9,7 +9,7 @@ await page.route('https://cdn.jsdelivr.net/npm/@supabase/**',route=>route.abort(
 try {
  await page.goto(origin,{waitUntil:'domcontentloaded'});
  await page.waitForSelector('#mobileNav button');
- assert.match(await page.locator('#appVersion').innerText(),/v3\.8\.2/);
+ assert.match(await page.locator('#appVersion').innerText(),/v3\.9\.0/);
  assert.match(await page.locator('.brand').innerText(),/House & Cart/);
  // The small version badge sits on the same baseline as the app name.
  assert.equal(await page.locator('.brand-name-row #appVersion').count(),1);
@@ -385,6 +385,7 @@ try {
 
  await testMockCloudSync(browser,origin);
  await testCloudRefreshGuards(browser,origin);
+ await testCookingPantryAndLayout(browser,origin);
  assert.deepEqual(errors,[],'Browser JavaScript exceptions');
  console.log('PASS: Home Care multi-categories, timed restock removal, separate spending history/budget, icons and existing features');
 }finally{
@@ -621,5 +622,111 @@ async function testCloudRefreshGuards(browser,origin){
   assert.equal(await conflict.isVisible(),false,'After resolving a conflict, refresh must stay silent');
   assert.deepEqual(faults,[],'No browser exceptions during auth events and refresh conflicts');
   console.log('PASS: identical refresh, auth-event dedupe, normalized comparison, unilateral changes and one-time true conflicts');
+ }finally{await page.close()}
+}
+
+
+async function testCookingPantryAndLayout(browser,origin){
+ const page=await browser.newPage({viewport:{width:390,height:844}});
+ const faults=[];
+ page.on('pageerror',e=>faults.push(String(e)));
+ await page.route('https://cdn.jsdelivr.net/npm/@supabase/**',route=>route.abort());
+ try{
+  await page.goto(origin,{waitUntil:'domcontentloaded'});
+  await page.waitForSelector('#mobileNav');
+  // Create a predictable recipe, a version, pantry batches and out-of-week plans.
+  const ids=await page.evaluate(()=>{
+   const milk=db.ingredients.find(x=>x.name==='Milk'),cheese=db.ingredients.find(x=>x.name==='Cheese'),salmon=db.ingredients.find(x=>x.name==='Salmon');
+   const day=dateKey(weekDays()[0]),oldDate=new Date(weekDays()[0]);
+   oldDate.setDate(oldDate.getDate()-14);
+   const oldDay=dateKey(oldDate);
+   db.meals=[{id:'cook-test-recipe',name:'Creamy pasta',category:['Dinner'],servings:2,ingredients:[{ingredientId:milk.id,qty:1000,unit:'ml'},{ingredientId:cheese.id,qty:500,unit:'g'}],steps:['Cook pasta'],variants:[{id:'fish-test',name:'Salmon variation',removeIds:[cheese.id],ingredientChanges:[{ingredientId:salmon.id,qty:200,unit:'g'}],tags:['Fish']}]}];
+   db.inventory=[
+    {id:'stock-milk',ingredientId:milk.id,name:milk.name,qty:1.5,unit:'l',category:milk.category,expiry:'2026-11-12'},
+    {id:'stock-cheese',ingredientId:cheese.id,name:cheese.name,qty:750,unit:'g',category:cheese.category},
+    {id:'stock-salmon',ingredientId:salmon.id,name:salmon.name,qty:100,unit:'g',category:salmon.category}
+   ];
+   db.plan={[day]:{Dinner:{mealId:'cook-test-recipe',servings:2}},[oldDay]:{Breakfast:{mealId:'cook-test-recipe',servings:2},Lunch:{mealId:'cook-test-recipe',servings:2},Dinner:{mealId:'cook-test-recipe',servings:2}}};
+   save();render();
+   return {day,oldDay,milk:milk.id,cheese:cheese.id,salmon:salmon.id};
+  });
+  assert.equal(await page.evaluate(()=>allPlanned().length),4,'Historical plans are still stored');
+  assert.equal(await page.evaluate(()=>plannedThisWeek().length),1,'Only current-week meal slots are counted');
+  assert.equal(await page.evaluate(()=>Object.values(aggregatePlan()).length),2,'Old weeks excluded from shopping rollup');
+  await page.locator('#mobileNav button[data-mobile-view="home"]').click();
+  assert.equal(await page.locator('.stat',{hasText:'Planned this week'}).locator('strong').innerText(),'1');
+  const inspire=page.locator('.dinner-inspiration-card');
+  assert.equal(await inspire.count(),1);
+  const heading=await inspire.locator('h2').boundingBox(),cta=await inspire.locator('.inspiration-action').boundingBox();
+  assert.ok(cta.y>=heading.y+heading.height-1,'Dinner inspiration CTA should stack beneath heading on mobile');
+  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1),true,'Home has no horizontal overflow');
+
+  await page.locator('#mobileNav button[data-mobile-view="meals"]').click();
+  assert.equal(await page.locator('#mealGrid .meal-card').count(),1);
+  const duplicate=page.locator('.duplicate-icon-button');
+  assert.equal(await duplicate.innerText(),'⧉','Duplicate control uses the icon only');
+  assert.match(await duplicate.getAttribute('aria-label'),/Duplicate recipe/);
+  const card=await page.locator('#mealGrid .meal-card').boundingBox();
+  assert.ok(card.width>300,'Recipes use roomy single column on narrow devices');
+  await page.locator('.meal-card h3').click();
+  await page.getByRole('button',{name:/I cooked this/}).click();
+  assert.equal(await page.locator('#cookedMealForm').isVisible(),true,'Unplanned recipe cook confirmation exists');
+  assert.match(await page.locator('#cookUsagePreview').innerText(),/Milk/);
+  await page.locator('#cookedMealForm button[type="button"]',{hasText:'Cancel'}).click();
+
+  // Planned meal marks done once and deducts inventory with unit conversions.
+  await page.locator('#mobileNav button[data-mobile-view="plan"]').click();
+  const slot=page.locator('.slot[data-occasion="Dinner"]').first();
+  await slot.getByRole('button',{name:/Cooked it/}).click();
+  assert.equal(await page.locator('#cookedServings').inputValue(),'2');
+  assert.match(await page.locator('#cookUsagePreview').innerText(),/1 L/);
+  await page.locator('#cookedMealForm button[type="submit"]').click();
+  assert.equal(await page.locator('#modtitle').innerText(),'Meal cooked ✓');
+  await page.getByRole('button',{name:'Done'}).click();
+  assert.equal(await page.evaluate(()=>db.inventory.find(x=>x.id==='stock-milk').qty),0.5);
+  assert.equal(await page.evaluate(()=>db.inventory.find(x=>x.id==='stock-cheese').qty),250);
+  assert.equal(await page.evaluate(()=>db.cookingHistory.length),1,'Cooking log retains the event');
+  assert.equal(await page.evaluate(({day})=>Boolean(db.plan[day].Dinner.cookedAt),ids),true);
+  assert.equal(await page.evaluate(({day})=>recordCookedMeal('cook-test-recipe','',2,day,'Dinner'),ids),null,'Planned meal cannot deduct twice');
+  assert.equal(await page.evaluate(()=>Object.keys(aggregatePlan()).length),0,'Cooked planned meals are excluded from future shopping rollup');
+  assert.match(await slot.innerText(),/Cooked/);
+
+  // +/- pantry updates are immediate and saved, with no negative quantities.
+  await page.locator('#mobileNav button[data-mobile-view="kitchen"]').click();
+  const milkRow=page.locator('#inventoryList .listline',{hasText:'Milk'}).first();
+  await milkRow.getByRole('button',{name:/Increase Milk/}).click();
+  assert.equal(await page.evaluate(()=>db.inventory.find(x=>x.id==='stock-milk').qty),0.6);
+  await milkRow.getByRole('button',{name:/Decrease Milk/}).click();
+  assert.equal(await page.evaluate(()=>db.inventory.find(x=>x.id==='stock-milk').qty),0.5);
+  assert.equal(await page.evaluate(()=>{db.inventory.find(x=>x.id==='stock-milk').qty=0;save();return adjustPantryQuantity('stock-milk',-1)}),false);
+  assert.equal(await page.evaluate(()=>db.inventory.find(x=>x.id==='stock-milk').qty),0);
+
+  // Unplanned variant: inherit milk, omit cheese, consume available salmon only.
+  await page.locator('#mobileNav button[data-mobile-view="meals"]').click();
+  await page.locator('.meal-card h3').click();
+  await page.locator('.version-pill',{hasText:'Salmon variation'}).click();
+  await page.getByRole('button',{name:/I cooked this/}).click();
+  assert.match(await page.locator('#cookUsagePreview').innerText(),/Short by/);
+  await page.locator('#cookedMealForm button[type="submit"]').click();
+  await page.getByRole('button',{name:'Done'}).click();
+  assert.equal(await page.evaluate(()=>db.inventory.find(x=>x.id==='stock-milk').qty),0);
+  assert.equal(await page.evaluate(()=>db.inventory.find(x=>x.id==='stock-salmon').qty),0);
+  assert.equal(await page.evaluate(()=>db.inventory.find(x=>x.id==='stock-cheese').qty),250,'Unplanned fish variation does not deduct excluded cheese');
+  assert.equal(await page.evaluate(()=>db.cookingHistory.length),2);
+  assert.equal(await page.evaluate(()=>cloudPayload().cookingHistory.length),2,'Cooked history participates in cloud sync');
+  await page.reload({waitUntil:'domcontentloaded'});
+  assert.equal(await page.evaluate(()=>db.cookingHistory.length),2,'Cooking history persists on refresh');
+  assert.equal(await page.evaluate(()=>db.inventory.find(x=>x.id==='stock-cheese').qty),250);
+
+  // Home Care category chooser stays scrollable with many categories.
+  await page.locator('#modeCare').click();
+  await page.locator('#mobileNav button[data-mobile-view="meals"]').click();
+  await page.evaluate(()=>{for(let i=0;i<28;i++)db.settings.careCategories.push('Extra category '+i);save()});
+  await page.getByRole('button',{name:/Add essential/}).click();
+  const catBox=page.locator('#essentialForm .care-cat-choices');
+  assert.equal(await catBox.evaluate(el=>el.scrollHeight>el.clientHeight),true,'Category chooser scrolls instead of expanding indefinitely');
+  assert.equal(await catBox.evaluate(el=>getComputedStyle(el).overflowY),'auto');
+  assert.deepEqual(faults,[],'No browser JS exceptions');
+  console.log('PASS: weekly slot count, responsive cards, cooked planned/unplanned meals, version deductions, pantry steppers, scrollable categories');
  }finally{await page.close()}
 }
