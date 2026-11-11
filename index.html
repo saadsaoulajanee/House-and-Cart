@@ -6,9 +6,9 @@
 <meta name="theme-color" content="#26323A">
 <meta name="application-name" content="House & Cart">
 <meta name="description" content="Your kitchen, shopping and home care companion.">
-<link rel="manifest" href="./manifest.json">
-<link rel="icon" type="image/png" sizes="64x64" href="./favicon.png">
-<link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png">
+<link rel="manifest" href="./manifest.json?v=3.7.1">
+<link rel="icon" type="image/png" sizes="64x64" href="./favicon.png?v=3.7.1">
+<link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png?v=3.7.1">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="House & Cart">
@@ -432,10 +432,18 @@ body{
  .top{background:rgba(255,254,252,.98)}
  .mode-row .tabs button.active{box-shadow:none}
 }
+
+/* v3.7.1: version badge sits alongside the product name */
+.brand-copy{min-width:0}
+.brand-name-row{display:flex;align-items:baseline;gap:9px;min-width:0;white-space:nowrap}
+.brand-name-row>span:first-child{font-family:Georgia,serif;font-weight:500;color:var(--ink);font-size:clamp(20px,2.5vw,27px);letter-spacing:-1px}
+.brand-name-row .version-tag{display:inline-flex;flex:0 0 auto;align-self:center;margin:0;padding:3px 7px;line-height:1.4;letter-spacing:0}
+@media(max-width:650px){.brand-name-row{gap:6px}.brand-name-row>span:first-child{font-size:clamp(17px,5.1vw,22px)!important}.brand-name-row .version-tag{font-size:9px;padding:2px 5px}.brand .smalltext{font-size:8px!important;letter-spacing:.8px!important}}
+@media(max-width:375px){.brand-name-row>span:first-child{font-size:18px!important}.brand-name-row{gap:5px}.brand-logo{width:39px;height:39px}}
 </style>
 </head>
 <body><div class="app">
-<header class="top"><div class="brand"><img class="logo brand-logo" src="./icon-192.png" width="48" height="48" alt="House & Cart icon"><div><span style="font-family:Georgia,serif;font-size:27px;font-weight:500;letter-spacing:-1px">House &amp; Cart</span><div class="smalltext" style="letter-spacing:2px;text-transform:uppercase;font-size:9px">Your everyday home companion</div><span class="version-tag" id="appVersion" title="House & Cart app version">v3.7.0</span></div></div><div class="top-actions"><span class="pill" id="saveState">Saved on this device</span><button class="btn soft small" onclick="exportData()">Export backup</button><button class="btn ghost small" onclick="document.getElementById('importFile').click()">Import</button><button class="btn green small" onclick="openCloudAccount()">Account & sync</button><input id="importFile" type="file" accept=".json,application/json" hidden></div><button class="mobile-menu-button" type="button" aria-label="Open app menu" onclick="openMoreMenu()">☰ <span>Menu</span></button></header>
+<header class="top"><div class="brand"><img class="logo brand-logo" src="./icon-192.png?v=3.7.1" width="48" height="48" alt="House & Cart icon"><div class="brand-copy"><div class="brand-name-row"><span style="font-family:Georgia,serif;font-size:27px;font-weight:500;letter-spacing:-1px">House &amp; Cart</span><span class="version-tag" id="appVersion" title="House & Cart app version">v3.7.1</span></div><div class="smalltext" style="letter-spacing:2px;text-transform:uppercase;font-size:9px">Your everyday home companion</div></div></div><div class="top-actions"><span class="pill" id="saveState">Saved on this device</span><button class="btn soft small" onclick="exportData()">Export backup</button><button class="btn ghost small" onclick="document.getElementById('importFile').click()">Import</button><button class="btn green small" onclick="openCloudAccount()">Account & sync</button><input id="importFile" type="file" accept=".json,application/json" hidden></div><button class="mobile-menu-button" type="button" aria-label="Open app menu" onclick="openMoreMenu()">☰ <span>Menu</span></button></header>
 <div class="row mode-row" style="justify-content:space-between;align-items:center;margin:8px 0 4px"><div class="tabs" style="margin:0"><button id="modeKitchen" class="active" onclick="setMode('kitchen')">🍋 Kitchen</button><button id="modeCare" onclick="setMode('care')">🧺 Home care</button></div><div class="cloud-status-bar" id="cloudStatusBar" data-state="local" role="status" aria-live="polite"><span class="cloud-status-dot" aria-hidden="true"></span><strong id="cloudStatusLabel">Saved on this device</strong></div><span class="smalltext" id="modeCaption">Recipes, ingredients & weekly rituals</span></div><nav class="nav" id="nav" aria-label="Main navigation"><button data-view="home" class="active">⌂ Overview</button><button data-view="meals">♡ Recipes</button><button data-view="plan">▦ Planner</button><button data-view="shop">🛒 Shopping</button><button data-view="kitchen">🥬 Pantry</button><button data-view="history">↗ History</button><button data-view="cookable" style="display:none">✨ What can I cook?</button><button data-view="budget" style="display:none">◉ Budget</button></nav>
 <main id="main" tabindex="-1"></main></div><nav id="mobileNav" class="mobile-bottom-nav" aria-label="Mobile navigation"></nav>
 <div class="modalback" id="modalback"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="modtitle" tabindex="-1"><div class="modalhead"><h2 id="modtitle">Edit</h2><button class="x" type="button" aria-label="Close dialog" onclick="closeModal()">✕</button></div><div id="modbody"></div></div></div>
