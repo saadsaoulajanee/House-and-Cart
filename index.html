@@ -1439,7 +1439,7 @@ function chooseSearchSuggestion(input,value){
 }
 function handleSearchPickerKeydown(event,input){
  const popup=document.getElementById('searchSuggestionPopup');
- if(event.key==='Escape'){if(popup&&!popup.hidden){event.preventDefault();hideSearchSuggestions()}return}
+ if(event.key==='Escape'){if(popup&&!popup.hidden){event.preventDefault();event.stopPropagation();hideSearchSuggestions()}return}
  if(event.key==='Tab'){hideSearchSuggestions();return}
  if(event.key==='ArrowDown'||event.key==='ArrowUp'){
   event.preventDefault();
