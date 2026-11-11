@@ -440,6 +440,25 @@ body{
 .brand-name-row .version-tag{display:inline-flex;flex:0 0 auto;align-self:center;margin:0;padding:3px 7px;line-height:1.4;letter-spacing:0}
 @media(max-width:650px){.brand-name-row{gap:6px}.brand-name-row>span:first-child{font-size:clamp(17px,5.1vw,22px)!important}.brand-name-row .version-tag{font-size:9px;padding:2px 5px}.brand .smalltext{font-size:8px!important;letter-spacing:.8px!important}}
 @media(max-width:375px){.brand-name-row>span:first-child{font-size:18px!important}.brand-name-row{gap:5px}.brand-logo{width:39px;height:39px}}
+
+/* v3.8 Home Care multi-category chips + editor */
+.care-cat-choices{display:flex;gap:7px;flex-wrap:wrap;margin:8px 0}
+.care-cat-chip{position:relative;cursor:pointer}
+.care-cat-chip input{position:absolute;opacity:0;width:1px;height:1px}
+.care-cat-chip span{display:inline-flex;align-items:center;min-height:37px;padding:8px 12px;border-radius:999px;border:1px solid #D9E0DB;background:#FFFEFC;color:#536269;font-size:12px;font-weight:750}
+.care-cat-chip input:checked+span{background:#26323A;border-color:#26323A;color:#FFFEFB}
+.care-cat-chip input:focus-visible+span{outline:3px solid #C4A574;outline-offset:3px}
+.care-cat-label{display:inline-block;border:1px solid #E4DDCF;background:#F4EFE5;color:#6A5D43;padding:4px 8px;border-radius:99px;margin:2px 4px 2px 0;font-size:10px;font-weight:700}
+.care-cat-muted{color:#82908B;background:#F3F5F2}
+.care-cat-count{font-size:11px;font-weight:800;color:#8A7457;background:#F4EFE3;border-radius:99px;padding:3px 7px}
+.care-cat-edit-list{display:grid;gap:8px;max-height:48vh;overflow-y:auto;margin:15px 0}
+.care-cat-edit-row{display:flex;align-items:center;gap:7px;padding:10px;border:1px solid #E2E6E1;border-radius:12px;background:#FFFEFB}
+.care-cat-edit-main{display:grid;gap:3px;flex:1;min-width:0}
+.care-cat-edit-main input,.care-cat-add input{background:white;border:1px solid #D6DED9;color:#26323A;padding:10px;border-radius:9px;min-width:0;width:100%}
+.care-cat-add{display:flex;gap:8px}.care-cat-add input{flex:1}
+.care-cat-error{border:1px solid #EEC7C0;background:#FDF0ED;padding:9px;border-radius:9px;color:#963C33;font-size:12px}
+.care-cat-error[hidden]{display:none}
+@media(max-width:530px){.care-cat-edit-row{flex-wrap:wrap}.care-cat-edit-main{flex:1 1 100%}.care-cat-edit-row .btn{flex:1}.care-cat-add{flex-wrap:wrap}.care-cat-add input{flex:1 1 100%}}
 </style>
 </head>
 <body><div class="app">
@@ -1438,6 +1457,88 @@ document.addEventListener('keydown',e=>{
 });
 const style=document.createElement('style');style.textContent='.quick-menu-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin:14px 0}.quick-menu-item{border:1px solid #eae2d9;background:#fff;padding:15px 12px;text-align:left;display:flex;justify-content:space-between;border-radius:12px;color:#333a36;font:700 13px ui-sans-serif,system-ui;min-height:53px}.quick-menu-item span{color:#b45e42}.quick-menu-tools{display:flex;gap:9px;flex-wrap:wrap;padding-top:14px;border-top:1px solid #eee8e0}.quick-menu-tools .btn{min-height:44px}.quick-menu-tools .btn:first-child{background:#ad5d48;color:white}';document.head.append(style);
 render();
+
+</script>
+<script>
+
+function getCareCategories(){return Array.isArray(db.settings.careCategories)?db.settings.careCategories:[]}
+function validCareCategory(raw){
+ const name=String(raw||'').trim().replace(/\s+/g,' ');
+ return name&&name.length<=38&&!/[\x00-\x1f<>]/.test(name)&&!['__proto__','constructor','prototype'].includes(name.toLowerCase())?name:'';
+}
+function careCategoryOptions(name,item){
+ const selected=categoriesOf(item);
+ const choices=getCareCategories().map(cat=>'<label class="care-cat-chip"><input type="checkbox" name="'+name+'" value="'+esc(cat)+'" '+(selected.includes(cat)?'checked':'')+'><span>'+esc(cat)+'</span></label>').join('');
+ return '<div class="care-cat-choices" role="group" aria-label="Choose one or more categories">'+(choices||'<p class="smalltext">Create a category using Manage categories.</p>')+'</div><p class="smalltext">Select as many categories as apply. An item remains a single stock record.</p>';
+}
+function careCheckedCategories(form,name){return [...form.querySelectorAll('input[name="'+name+'"]:checked')].map(x=>x.value).filter(x=>getCareCategories().includes(x))}
+function careCategoryBadges(item){return categoriesOf(item).map(x=>'<span class="care-cat-label">'+esc(x)+'</span>').join('')||'<span class="care-cat-label care-cat-muted">Uncategorised</span>'}
+function careCategoryError(message){const el=document.getElementById('careCategoryError');if(el){el.textContent=message;el.hidden=!message}else if(message)alert(message)}
+function createCareCategory(value){
+ const name=validCareCategory(value);
+ if(!name){careCategoryError('Enter a valid category of 1–38 characters.');return false}
+ if(getCareCategories().some(x=>norm(x)===norm(name))){careCategoryError('This category already exists.');return false}
+ getCareCategories().push(name);save();render();openCareCategoryManager();return true;
+}
+function renameCareCategory(oldName,value){
+ const name=validCareCategory(value),list=getCareCategories(),idx=list.indexOf(oldName);
+ if(idx<0||!name){careCategoryError('Enter a valid category name.');return false}
+ if(list.some((x,i)=>i!==idx&&norm(x)===norm(name))){careCategoryError('This name is already in use.');return false}
+ list[idx]=name;
+ for(const item of [...db.cleaningEssentials,...db.cleaningInventory,...db.cleaningShopping])
+  syncCareCategoryFields(item,categoriesOf(item).map(x=>x===oldName?name:x));
+ save();render();openCareCategoryManager();return true;
+}
+function deleteCareCategory(name){
+ if(!getCareCategories().includes(name))return false;
+ const n=[...db.cleaningEssentials,...db.cleaningInventory,...db.cleaningShopping].filter(x=>categoriesOf(x).includes(name)).length;
+ if(!confirm('Remove category "'+name+'"? '+n+' item(s) will lose this category but remain saved.'))return false;
+ db.settings.careCategories=getCareCategories().filter(x=>x!==name);
+ for(const item of [...db.cleaningEssentials,...db.cleaningInventory,...db.cleaningShopping])
+  syncCareCategoryFields(item,categoriesOf(item).filter(x=>x!==name));
+ save();render();openCareCategoryManager();return true;
+}
+function openCareCategoryManager(){
+ const rows=getCareCategories().map(cat=>{
+  const n=db.cleaningEssentials.filter(x=>categoriesOf(x).includes(cat)).length;
+  return '<div class="care-cat-edit-row" data-category="'+esc(cat)+'"><div class="care-cat-edit-main"><input aria-label="Rename '+esc(cat)+'" maxlength="38" value="'+esc(cat)+'"><small class="smalltext">'+n+' essentials</small></div><button type="button" class="btn soft small" data-action="rename">Save</button><button type="button" class="btn danger small" data-action="delete">Delete</button></div>';
+ }).join('');
+ showModal('Home Care categories','<p class="sub">Add, rename or delete categories. An essential can belong to several categories. Removing a category never deletes a product.</p><p id="careCategoryError" class="care-cat-error" role="alert" hidden></p><div id="careCatEditList" class="care-cat-edit-list">'+(rows||'<div class="empty">No categories yet.</div>')+'</div><form id="careCatCreateForm"><label for="newCareCat">New category</label><div class="care-cat-add"><input id="newCareCat" maxlength="38" required placeholder="e.g. Toiletries, Pets, Garden"><button class="btn green" type="submit">＋ Add</button></div></form>');
+ document.getElementById('careCatEditList').onclick=e=>{
+  const btn=e.target.closest('button[data-action]');if(!btn)return;
+  const row=btn.closest('.care-cat-edit-row'),old=row.dataset.category;
+  if(btn.dataset.action==='rename')renameCareCategory(old,row.querySelector('input').value);
+  else deleteCareCategory(old);
+ };
+ document.getElementById('careCatCreateForm').onsubmit=e=>{e.preventDefault();createCareCategory(document.getElementById('newCareCat').value)};
+}
+function essentialsView(){
+ const grouped=[...getCareCategories().map(name=>({name,items:db.cleaningEssentials.filter(x=>categoriesOf(x).includes(name))})),{name:'Uncategorised',items:db.cleaningEssentials.filter(x=>!categoriesOf(x).length)}].filter(x=>x.items.length||x.name!=='Uncategorised');
+ const items=grouped.map(group=>{
+  const rows=group.items.map(item=>{
+   const inv=db.cleaningInventory.find(x=>x.essentialId===item.id);
+   const status=inv?'<span class="badge '+(inv.qty<=inv.threshold?'orange':'')+'">'+(inv.qty<=inv.threshold?'Low':'Tracked')+'</span>':'<button class="btn soft small" onclick="trackEssential(\''+item.id+'\')">Track</button>';
+   return '<div class="listline essential-row"><span class="essential-emoji">'+esc(item.emoji||'🧴')+'</span><div class="grow essential-main"><b>'+esc(item.name)+'</b><small>'+(inv?(inv.qty+' '+esc(inv.unit)+' in cupboard'):'Not tracked yet')+'</small></div><div class="essential-actions">'+status+'<button class="btn ghost small" aria-label="Edit '+esc(item.name)+'" onclick="openEssentialEditor(\''+item.id+'\')">✎</button></div></div>';
+  }).join('');
+  return '<section class="card span4 essentials-category" style="box-shadow:none"><h2>'+esc(group.name)+' <span class="care-cat-count">'+group.items.length+'</span></h2>'+(rows||'<p class="smalltext">Nothing here yet.</p>')+'</section>';
+ }).join('');
+ return '<div class="hero"><div><div class="eyebrow">Home Care · Essentials</div><h1>Household essentials</h1><p class="sub">A flexible system for every room. Give an essential multiple categories without duplicating it.</p></div><div class="row"><button class="btn soft" onclick="openCareCategoryManager()">⚙ Manage categories</button><button class="btn green" onclick="openEssentialEditor()">＋ Add essential</button></div></div><div class="card"><div class="sectionhead"><div><h2>Your essentials</h2><span class="smalltext">'+db.cleaningEssentials.length+' unique items · '+getCareCategories().length+' categories</span></div></div><div class="grid essentials-grid">'+(items||'<div class="empty full">No essentials yet. Add your first item.</div>')+'</div><p class="smalltext">An item in multiple categories is shown in each group but is only tracked once.</p></div>';
+}
+function openEssentialEditor(id=''){
+ const item=id?db.cleaningEssentials.find(x=>x.id===id):{name:'',categories:[],emoji:'🧴'};if(!item)return;
+ const body='<form id="essentialForm"><div class="field"><label>Essential name</label><input name="name" maxlength="70" required value="'+esc(item.name)+'" placeholder="e.g. Bathroom descaler"></div><div class="field"><div class="sectionhead"><label>Categories (multiple allowed)</label><button class="btn soft small" type="button" onclick="openCareCategoryManager()">Manage</button></div>'+careCategoryOptions('careCats',item)+'</div><div class="field"><label>Emoji</label><input name="emoji" maxlength="8" value="'+esc(item.emoji||'🧴')+'"></div><div class="row"><button class="btn green" type="submit">Save essential</button>'+(id?'<button class="btn danger" type="button" onclick="deleteEssentialType(\''+id+'\')">Delete essential</button>':'')+'</div></form>';
+ showModal(id?'Edit essential':'Add essential',body);
+ document.getElementById('essentialForm').onsubmit=e=>{
+  e.preventDefault();const form=e.target,name=form.elements.name.value.trim();
+  if(db.cleaningEssentials.some(x=>x.id!==id&&norm(x.name)===norm(name))){alert('That essential already exists.');return}
+  const categories=careCheckedCategories(form,'careCats'),newItem=syncCareCategoryFields({id:id||uid(),name,emoji:form.elements.emoji.value.trim()||'🧴',qty:1,threshold:1,unit:'pack',essential:true},categories);
+  if(id){
+   const idx=db.cleaningEssentials.findIndex(x=>x.id===id);db.cleaningEssentials[idx]=newItem;
+   db.cleaningInventory.forEach(x=>{if(x.essentialId===id){x.name=name;syncCareCategoryFields(x,categories)}});
+  }else db.cleaningEssentials.push(newItem);
+  save();closeModal();render();
+ };
+}
 
 </script>
 </body></html>
