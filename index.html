@@ -486,10 +486,90 @@ body{
  .essential-main b{font-size:14px}
  .essential-actions .btn{font-size:11px!important;padding:7px 9px!important}
 }
+
+/* v3.9: readable Home Care categories, intentional home CTA and compact recipe list */
+.care-cat-choices{
+ display:flex;flex-wrap:wrap;align-content:flex-start;gap:8px;max-height:min(250px,38vh);
+ overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;
+ border:1px solid #e2e5df;background:#fafaf7;border-radius:14px;
+ padding:12px;scroll-padding:12px;min-height:44px;
+}
+.care-cat-chip{flex:none}
+.dinner-inspiration-card{background:linear-gradient(128deg,#fffefb 0%,#f8f4eb 100%);border-color:#e6dfd0}
+.dinner-inspiration-card .sectionhead{display:flex;align-items:center;gap:20px;justify-content:space-between;margin:0}
+.dinner-inspiration-card .inspiration-copy{min-width:0;flex:1}
+.dinner-inspiration-card .inspiration-copy h2{font:600 clamp(22px,2.5vw,28px)/1.15 Georgia,serif;letter-spacing:-.6px;margin:6px 0 8px}
+.dinner-inspiration-card .inspiration-copy .smalltext{font-size:13px;line-height:1.5;margin:0}
+.dinner-inspiration-card .inspiration-action{display:inline-flex;align-items:center;justify-content:space-between;gap:18px;flex:0 0 auto;min-width:178px;min-height:48px;border-radius:13px;padding:12px 15px;white-space:nowrap}
+.dinner-inspiration-card .inspiration-action span:last-child{color:#C4A574;font-size:19px}
+.duplicate-icon-button{width:39px;height:38px;display:inline-grid;place-items:center;font-size:19px!important;padding:0!important;flex:0 0 39px}
+.recipe-card-actions .btn,.meal-card>.row:last-child .btn{white-space:nowrap}
+@media(max-width:650px){
+ .dinner-inspiration-card{padding:20px!important}
+ .dinner-inspiration-card .sectionhead{display:flex;flex-direction:column;align-items:stretch;gap:17px}
+ .dinner-inspiration-card .inspiration-copy h2{font-size:25px}
+ .dinner-inspiration-card .inspiration-copy .smalltext{max-width:33ch}
+ .dinner-inspiration-card .inspiration-action{flex:1;width:100%;min-width:0;min-height:49px}
+ .meal-grid{grid-template-columns:minmax(0,1fr)!important;gap:12px}
+ .meal-card{display:grid;grid-template-columns:96px minmax(0,1fr);align-items:start;gap:3px 12px;padding:12px 13px;border-radius:17px}
+ .meal-card>.meal-photo{grid-column:1;grid-row:1 / span 3;width:96px;height:96px;border-radius:12px;object-fit:cover}
+ .meal-card>.row:first-of-type{grid-column:2;grid-row:1;display:flex;justify-content:space-between;align-items:center;gap:5px;margin:0;min-width:0}
+ .meal-card>.row:first-of-type .badge{max-width:100%;font-size:10px;white-space:normal}
+ .meal-card>.row:first-of-type .smalltext{font-size:11px;white-space:nowrap}
+ .meal-card>.meal-card-title-row{grid-column:2;grid-row:2;min-width:0;margin:2px 0 0;align-items:center}
+ .meal-card>.meal-card-title-row h3{font-size:17px;line-height:1.25;margin:0}
+ .meal-card>.smalltext{grid-column:2;grid-row:3;font-size:11px;line-height:1.35;align-self:start}
+ .meal-card>.recipe-card-versions,.meal-card>.recipe-tags{grid-column:1/-1;margin:5px 0 0}
+ .meal-card>.row:last-child{grid-column:1/-1;display:flex;flex-wrap:nowrap;align-items:center;gap:6px;margin-top:11px}
+ .meal-card>.row:last-child .btn{min-height:38px;padding:7px 9px;font-size:12px}
+ .meal-card>.row:last-child .btn:first-child{flex:1;min-width:0}
+ .meal-card>.row:last-child .duplicate-icon-button{flex:0 0 38px;padding:0!important}
+ .meal-card-favorite{margin:0;flex-basis:34px;width:34px;height:34px}
+}
+@media(max-width:375px){
+ .meal-card{grid-template-columns:83px minmax(0,1fr);gap:3px 10px}
+ .meal-card>.meal-photo{width:83px;height:83px}
+ .meal-card>.row:last-child .btn{font-size:11px;padding:6px 8px}
+ .meal-card>.row:last-child .duplicate-icon-button{padding:0!important}
+}
+
+/* Cooked-meal confirmation and compact Pantry steppers */
+.cook-confirm-heading{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:12px 0 16px}
+.cook-confirm-heading strong{font:600 25px/1.2 Georgia,serif;letter-spacing:-.4px}
+.cook-usage-line{display:flex;align-items:center;justify-content:space-between;gap:12px;border-top:1px solid #e5e6e1;padding:12px 3px}
+.cook-usage-ingredient{display:flex;flex-direction:column;gap:3px;min-width:0}
+.cook-usage-ingredient b{font-size:13px}
+.cook-usage-ingredient small{font-size:12px;color:#72807e}
+.cook-usage-line>span{flex:none;font-size:12px;font-weight:750;max-width:47%;text-align:right}
+.cook-deduct{color:#416b51}
+.cook-shortage{color:#a76239}
+.cook-warning{background:#fff4e6;border:1px solid #eed7b6;color:#885c2e;padding:12px;border-radius:11px;font-size:12px;line-height:1.55}
+.cook-confirm-actions{display:flex;gap:9px;justify-content:flex-end;flex-wrap:wrap;margin-top:19px}
+.cooked-recipe-button{background:#26323A;color:#fffdf6;min-height:43px}
+.planned-cook-btn{color:#50715b!important;background:#e9f3ea!important;border:1px solid #d6e4d4!important}
+.planned-cooked-badge{display:inline-flex;align-items:center;padding:6px 10px;border-radius:99px;background:#e5eee6;color:#406d50;font-weight:800;font-size:11px;white-space:nowrap}
+.pantry-quantity-controls{display:flex;align-items:center;border:1px solid #e1dfd6;border-radius:12px;overflow:hidden;flex:0 0 auto;background:#f9f7f1}
+.pantry-quantity-controls button{width:36px;height:39px;border:0;background:transparent;color:#5f513d;font-size:23px;font-weight:500;display:grid;place-items:center;padding:0;line-height:1}
+.pantry-quantity-controls button:not(:disabled):hover{background:#ece6d9}
+.pantry-quantity-controls button:disabled{opacity:.27;cursor:default}
+.pantry-current-quantity{min-width:68px;text-align:center;border-left:1px solid #e4e1d8;border-right:1px solid #e4e1d8;padding:5px 7px;font:750 12px ui-sans-serif,system-ui;color:#293741;white-space:nowrap}
+.pantry-row-actions{display:flex;gap:5px;flex:0 0 auto}
+#inventoryList>.listline{gap:9px;flex-wrap:wrap}
+#inventoryList>.listline>.grow{flex:1 1 150px;min-width:0}
+@media(max-width:650px){
+ .cook-confirm-actions{flex-direction:column-reverse}
+ .cook-confirm-actions .btn{width:100%;min-height:46px}
+ .plan-slot-actions{flex-wrap:wrap;gap:5px}
+ #inventoryList>.listline{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;padding:12px 0}
+ #inventoryList>.listline>.grow{grid-column:1/-1;min-width:0}
+ #inventoryList>.listline>.pantry-quantity-controls{grid-column:1;justify-self:start}
+ #inventoryList>.listline>.pantry-row-actions{grid-column:2;justify-content:flex-end}
+ .pantry-current-quantity{min-width:72px}
+}
 </style>
 </head>
 <body><div class="app">
-<header class="top"><div class="brand"><img class="logo brand-logo" src="./icon-192.png?v=3.7.1" width="48" height="48" alt="House & Cart icon"><div class="brand-copy"><div class="brand-name-row"><span style="font-family:Georgia,serif;font-size:27px;font-weight:500;letter-spacing:-1px">House &amp; Cart</span><span class="version-tag" id="appVersion" title="House & Cart app version">v3.8.2</span></div><div class="smalltext" style="letter-spacing:2px;text-transform:uppercase;font-size:9px">Your everyday home companion</div></div></div><div class="top-actions"><span class="pill" id="saveState">Saved on this device</span><button class="btn soft small" onclick="exportData()">Export backup</button><button class="btn ghost small" onclick="document.getElementById('importFile').click()">Import</button><button class="btn green small" onclick="openCloudAccount()">Account & sync</button><input id="importFile" type="file" accept=".json,application/json" hidden></div><button class="mobile-menu-button" type="button" aria-label="Open app menu" onclick="openMoreMenu()">☰ <span>Menu</span></button></header>
+<header class="top"><div class="brand"><img class="logo brand-logo" src="./icon-192.png?v=3.7.1" width="48" height="48" alt="House & Cart icon"><div class="brand-copy"><div class="brand-name-row"><span style="font-family:Georgia,serif;font-size:27px;font-weight:500;letter-spacing:-1px">House &amp; Cart</span><span class="version-tag" id="appVersion" title="House & Cart app version">v3.9.0</span></div><div class="smalltext" style="letter-spacing:2px;text-transform:uppercase;font-size:9px">Your everyday home companion</div></div></div><div class="top-actions"><span class="pill" id="saveState">Saved on this device</span><button class="btn soft small" onclick="exportData()">Export backup</button><button class="btn ghost small" onclick="document.getElementById('importFile').click()">Import</button><button class="btn green small" onclick="openCloudAccount()">Account & sync</button><input id="importFile" type="file" accept=".json,application/json" hidden></div><button class="mobile-menu-button" type="button" aria-label="Open app menu" onclick="openMoreMenu()">☰ <span>Menu</span></button></header>
 <div class="row mode-row" style="justify-content:space-between;align-items:center;margin:8px 0 4px"><div class="tabs" style="margin:0"><button id="modeKitchen" class="active" onclick="setMode('kitchen')">🍋 Kitchen</button><button id="modeCare" onclick="setMode('care')">🧺 Home care</button></div><div class="cloud-status-bar" id="cloudStatusBar" data-state="local" role="status" aria-live="polite"><span class="cloud-status-dot" aria-hidden="true"></span><strong id="cloudStatusLabel">Saved on this device</strong></div><span class="smalltext" id="modeCaption">Recipes, ingredients & weekly rituals</span></div><nav class="nav" id="nav" aria-label="Main navigation"><button data-view="home" class="active">⌂ Overview</button><button data-view="meals">♡ Recipes</button><button data-view="plan">▦ Planner</button><button data-view="shop">🛒 Shopping</button><button data-view="kitchen">🥬 Pantry</button><button data-view="history">↗ History</button><button data-view="cookable" style="display:none">✨ What can I cook?</button><button data-view="budget" style="display:none">◉ Budget</button></nav>
 <main id="main" tabindex="-1"></main></div><nav id="mobileNav" class="mobile-bottom-nav" aria-label="Mobile navigation"></nav>
 <div class="modalback" id="modalback"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="modtitle" tabindex="-1"><div class="modalhead"><h2 id="modtitle">Edit</h2><button class="x" type="button" aria-label="Close dialog" onclick="closeModal()">✕</button></div><div id="modbody"></div></div></div>
@@ -507,9 +587,9 @@ const DEFAULT_ING=[
 ];
 const uid=()=>Math.random().toString(36).slice(2,10);
 const CLEAN_ESSENTIALS=[['Dishwashing liquid','Kitchen cleaning','🫧'],['Dishwasher tablets','Kitchen cleaning','🍽️'],['All-purpose cleaner','Surfaces','🧴'],['Bathroom cleaner','Bathroom','🚿'],['Toilet cleaner','Bathroom','🚽'],['Glass cleaner','Surfaces','🪟'],['Floor cleaner','Floors','🧹'],['Laundry detergent','Laundry','🧺'],['Fabric softener','Laundry','👕'],['Bleach / disinfectant','Disinfection','🧼'],['Sponges','Tools & accessories','🧽'],['Microfibre cloths','Tools & accessories','🧻'],['Bin bags','Waste','🗑️'],['Rubber gloves','Tools & accessories','🧤'],['Paper towels','Paper goods','🧻']];
-const fresh=()=>({meals:[],cleaningInventory:[],cleaningShopping:[],cleaningHistory:[],cleaningEssentials:CLEAN_ESSENTIALS.map(x=>({id:uid(),name:x[0],category:x[1],categories:[x[1]],emoji:x[2],qty:1,threshold:1,unit:'pack',essential:true})),ingredients:DEFAULT_ING.map(x=>({id:uid(),name:x[0],category:x[1],unit:x[2],aliases:x[3],isSpice:!!x[4],custom:false})),inventory:[],plan:{},shopping:[],history:[],settings:{currency:'EUR',store:'',budget:80,careBudget:100,careMonthlyBudgets:{},careCategories:[...new Set(CLEAN_ESSENTIALS.map(x=>x[1]))]}});
+const fresh=()=>({meals:[],cleaningInventory:[],cleaningShopping:[],cleaningHistory:[],cleaningEssentials:CLEAN_ESSENTIALS.map(x=>({id:uid(),name:x[0],category:x[1],categories:[x[1]],emoji:x[2],qty:1,threshold:1,unit:'pack',essential:true})),ingredients:DEFAULT_ING.map(x=>({id:uid(),name:x[0],category:x[1],unit:x[2],aliases:x[3],isSpice:!!x[4],custom:false})),inventory:[],plan:{},shopping:[],history:[],cookingHistory:[],settings:{currency:'EUR',store:'',budget:80,careBudget:100,careMonthlyBudgets:{},careCategories:[...new Set(CLEAN_ESSENTIALS.map(x=>x[1]))]}});
 let db;try{db=JSON.parse(localStorage.getItem(KEY))||fresh()}catch(e){db=fresh()}
-db={...fresh(),...db,cleaningInventory:db.cleaningInventory||[],cleaningShopping:db.cleaningShopping||[],cleaningHistory:db.cleaningHistory||[],cleaningEssentials:db.cleaningEssentials||fresh().cleaningEssentials,settings:{...fresh().settings,...(db.settings||{})}};
+db={...fresh(),...db,cleaningInventory:db.cleaningInventory||[],cleaningShopping:db.cleaningShopping||[],cleaningHistory:db.cleaningHistory||[],cookingHistory:db.cookingHistory||[],cleaningEssentials:db.cleaningEssentials||fresh().cleaningEssentials,settings:{...fresh().settings,...(db.settings||{})}};
 
 /* Home Care data migration: legacy single-category records remain readable.
    The canonical category collection lives inside settings and syncs with existing Supabase payloads. */
@@ -552,7 +632,7 @@ const RECOVERY_KEY='housecart_recovery_snapshot_v1',BACKUP_AT_KEY='housecart_las
 function stableJson(value){return JSON.stringify(value,(key,item)=>item&&typeof item==='object'&&!Array.isArray(item)?Object.keys(item).sort().reduce((out,k)=>(out[k]=item[k],out),{}):item)}
 
 /* Stable, non-mutating comparison across compatible saved-data versions. */
-const SYNC_COLLECTION_KEYS=['meals','cleaningInventory','cleaningShopping','cleaningHistory','cleaningEssentials','ingredients','inventory','shopping','history'];
+const SYNC_COLLECTION_KEYS=['meals','cleaningInventory','cleaningShopping','cleaningHistory','cleaningEssentials','ingredients','inventory','shopping','history','cookingHistory'];
 const CLOUD_SYNC_BASELINE_PREFIX='housecart_cloud_baseline_v2_';
 const CLOUD_CONFLICT_SNOOZE_PREFIX='housecart_cloud_conflict_dismissed_v1_';
 function comparableCloudPayload(value){
@@ -627,7 +707,7 @@ function lastSyncText(){let raw=localStorage.getItem(LAST_SYNC_AT_KEY);return ra
 function markCloudSynced(payload,updatedAt){lastCloudPayload=comparableCloudText(payload);persistCloudBaseline(cloudUser?.id,lastCloudPayload);clearDismissedConflict(cloudUser?.id);cloudRemoteUpdatedAt=updatedAt||new Date().toISOString();localStorage.setItem(LAST_SYNC_AT_KEY,new Date().toISOString());const status=document.getElementById('saveState');if(status)status.textContent='✓ Cloud synced';refreshCloudStatus()}
 
 function save(){localStorage.setItem(KEY,JSON.stringify(db));let s=document.getElementById('saveState');if(s)s.textContent=cloudUser?'Saved locally · cloud sync pending':'Saved on this device';if(cloudUser)scheduleCloudSync()}
-function cloudPayload(){return {meals:db.meals,cleaningInventory:db.cleaningInventory,cleaningShopping:db.cleaningShopping,cleaningHistory:db.cleaningHistory,cleaningEssentials:db.cleaningEssentials,ingredients:db.ingredients,inventory:db.inventory,plan:db.plan,shopping:db.shopping,history:db.history,settings:db.settings}}
+function cloudPayload(){return {meals:db.meals,cleaningInventory:db.cleaningInventory,cleaningShopping:db.cleaningShopping,cleaningHistory:db.cleaningHistory,cleaningEssentials:db.cleaningEssentials,ingredients:db.ingredients,inventory:db.inventory,plan:db.plan,shopping:db.shopping,history:db.history,cookingHistory:db.cookingHistory||[],settings:db.settings}}
 function scheduleCloudSync(){clearTimeout(syncTimer);syncTimer=setTimeout(()=>syncNow('push'),900)}
 
 function chooseCloudConflict(){
@@ -804,6 +884,7 @@ function weekStart(){let d=new Date();d.setHours(12,0,0,0);d.setDate(d.getDate()
 function weekDays(){let s=weekStart();return Array.from({length:7},(_,i)=>{let d=new Date(s);d.setDate(s.getDate()+i);return d})}
 function fmtDate(s){return new Date(s+'T12:00:00').toLocaleDateString(undefined,{weekday:'short',day:'numeric',month:'short'})}
 function allPlanned(){return Object.values(db.plan||{}).flatMap(day=>Object.values(day||{}).flatMap(slot=>slot?[slot]:[]))}
+function plannedThisWeek({includeCooked=true}={}){return weekDays().flatMap(date=>Object.values(db.plan[dateKey(date)]||{}).filter(slot=>slot&&slot.mealId&&(includeCooked||!slot.cookedAt)))}
 
 /* Recipe versions share the parent recipe, with ingredient adjustments and optional step overrides. */
 function recipeVersion(m,versionId=''){
@@ -888,7 +969,105 @@ function wordStartsMatch(value,query){let q=norm(query);if(!q)return true;const 
 function fieldWordMatch(value,query){const q=norm(query);if(!q)return true;return q.split(/\s+/).every(part=>wordStartsMatch(value,part))}
 function convertQty(q,from,to){let a=unitInfo(from),b=unitInfo(to);if(a.family!==b.family)return null;return Number(q||0)*a.factor/b.factor}
 function pantryQty(ingredientId,targetUnit){let ing=ingById(ingredientId);if(isSpice(ing))return 0;let total=0,matched=false;for(const x of db.inventory.filter(i=>i.ingredientId===ingredientId)){let v=convertQty(x.qty,x.unit,targetUnit);if(v!==null){total+=v;matched=true}}return matched?total:0}
-function aggregatePlan(){let map={};for(const p of allPlanned()){let parent=mealById(p.mealId),m=resolveRecipe(parent,p.variantId);if(!m)continue;let factor=(Number(p.servings)||m.servings||1)/(Number(m.servings)||1);for(const line of m.ingredients||[]){let ing=ingById(line.ingredientId);if(!ing||isSpice(ing))continue;let unit=line.unit||ing.unit||'piece',info=unitInfo(unit),key=ing.id+'::'+info.family;map[key]??={ingredientId:ing.id,qty:0,unit,category:ing.category};let converted=convertQty(Number(line.qty||0),unit,map[key].unit);map[key].qty+=Number(converted===null?line.qty:converted)*factor;}}return map}
+
+/* Recording a cooked meal:
+   A planned slot is recorded only once. Ingredient quantities are converted
+   to their pantry units, drawn from the earliest-expiring stock first,
+   and never allowed below zero. Spices remain status-based.
+*/
+function cookingUsage(mealId,variantId='',servings){
+ const recipe=resolveRecipe(mealById(mealId),variantId);
+ if(!recipe)return null;
+ const count=Number(servings)||Number(recipe.servings)||1;
+ if(!(count>0&&Number.isFinite(count)))return null;
+ const scale=count/(Number(recipe.servings)||1),needs=new Map();
+ const spices=[];
+ for(const row of recipe.ingredients||[]){
+  const ing=ingById(row.ingredientId);
+  if(!ing)continue;
+  if(isSpice(ing)){spices.push(ing.name);continue}
+  const value=Number(row.qty);
+  if(!Number.isFinite(value)||value<=0)continue;
+  const unit=row.unit||ing.unit||'piece',family=unitInfo(unit).family,key=ing.id+'|'+family;
+  const existing=needs.get(key),converted=existing?convertQty(value,unit,existing.unit):value;
+  if(existing)existing.qty+=(converted===null?0:converted)*scale;
+  else needs.set(key,{ingredientId:ing.id,name:ing.name,unit,qty:value*scale,category:ing.category});
+ }
+ const plannedDeductions=[],lines=[];
+ const sortInventory=(a,b)=>String(a.expiry||'9999-12-31').localeCompare(String(b.expiry||'9999-12-31'));
+ const capacity=new Map(db.inventory.map(row=>[row.id,Math.max(0,Number(row.qty)||0)]));
+ for(const need of needs.values()){
+  let left=need.qty,available=0;
+  const matching=db.inventory.filter(row=>row.ingredientId===need.ingredientId&&!row.isSpice&&convertQty(1,row.unit,need.unit)!==null).sort(sortInventory);
+  for(const row of matching){
+   const inUnit=convertQty(capacity.get(row.id),row.unit,need.unit);
+   if(inUnit===null)continue;
+   available+=inUnit;
+   if(left<=1e-8||inUnit<=0)continue;
+   const used=Math.min(left,inUnit),pantryUnits=convertQty(used,need.unit,row.unit);
+   if(pantryUnits===null)continue;
+   capacity.set(row.id,Math.max(0,capacity.get(row.id)-pantryUnits));
+   plannedDeductions.push({inventoryId:row.id,ingredientId:need.ingredientId,qty:Number(pantryUnits.toPrecision(12)),unit:row.unit});
+   left=Math.max(0,left-used);
+  }
+  lines.push({...need,available,missing:Math.max(0,need.qty-available),deducted:need.qty-left});
+ }
+ return {recipe,servings:count,lines,spices,deductions:plannedDeductions};
+}
+function cookingUsageMarkup(result){
+ const lines=result.lines.map(line=>
+  '<div class="cook-usage-line"><div class="cook-usage-ingredient"><b>'+esc(line.name)+'</b><small>Needed: '+esc(formatQuantity(line.qty,line.unit))+' · Pantry: '+esc(formatQuantity(line.available,line.unit))+'</small></div><span class="'+(line.missing>1e-8?'cook-shortage':'cook-deduct')+'">'+(line.missing>1e-8?'Short by '+esc(formatQuantity(line.missing,line.unit)):'− '+esc(formatQuantity(line.qty,line.unit)))+'</span></div>'
+ ).join('');
+ return (lines||'<p class="smalltext">No measurable ingredients to deduct.</p>')+(result.spices.length?'<p class="smalltext">Spices remain tracked by status: '+esc(result.spices.join(', '))+'.</p>':'')+(result.lines.some(x=>x.missing>1e-8)?'<p class="cook-warning">Some pantry quantities are insufficient or use incompatible units. The app will deduct only what is available, without allowing negative stock.</p>':'');
+}
+function openCookedFromSlot(day,occasion){
+ const slot=db.plan[day]?.[occasion];
+ if(!slot?.mealId)return;
+ if(slot.cookedAt){showModal('Already marked as cooked','<p class="sub">This planned meal was already logged. Your pantry was deducted once, so it will not be deducted again.</p>');return}
+ openCookedConfirm(slot.mealId,slot.variantId||'',day,occasion);
+}
+function openCookedConfirm(mealId,variantId='',day='',occasion=''){
+ const parent=mealById(mealId),recipe=resolveRecipe(parent,variantId);
+ if(!recipe)return;
+ const planned=day&&occasion?db.plan[day]?.[occasion]:null;
+ if(day&&occasion&&(!planned||planned.mealId!==mealId)){alert('This planned meal has changed. Reopen the planner to log the correct meal.');return}
+ if(planned?.cookedAt){showModal('Already marked as cooked','<p class="sub">This planned meal has already been recorded.</p>');return}
+ const servings=Number(planned?.servings)||Number(parent.servings)||1;
+ const choice=variantId?versionTitle(parent,variantId):'Original';
+ const body='<form id="cookedMealForm"><p class="sub">Confirm what you cooked. House & Cart will subtract its ingredients from the pantry, using the recipe version and portions you specify.</p><div class="cook-confirm-heading"><strong>'+esc(parent.name)+'</strong><span class="version-chip">'+esc(choice)+'</span></div><div class="field"><label for="cookedServings">Servings cooked</label><input id="cookedServings" type="number" required min="0.25" step="0.25" value="'+servings+'"></div><div id="cookUsagePreview">'+cookingUsageMarkup(cookingUsage(mealId,variantId,servings))+'</div><div class="cook-confirm-actions"><button type="button" class="btn ghost" onclick="closeModal()">Cancel</button><button type="submit" class="btn green">✓ Confirm cooked & update pantry</button></div></form>';
+ showModal('I cooked this recipe',body);
+ const form=document.getElementById('cookedMealForm');
+ form.querySelector('#cookedServings').oninput=e=>{
+  const preview=cookingUsage(mealId,variantId,Number(e.target.value));
+  document.getElementById('cookUsagePreview').innerHTML=preview?cookingUsageMarkup(preview):'<p class="cook-warning">Enter a valid number of servings.</p>';
+ };
+ form.onsubmit=e=>{
+  e.preventDefault();
+  const result=recordCookedMeal(mealId,variantId,Number(form.querySelector('#cookedServings').value),day,occasion);
+  if(!result){alert('Could not log this meal. Check the planner or servings and try again.');return}
+  closeModal();render();
+  showModal('Meal cooked ✓','<p class="sub">'+esc(parent.name)+' ('+result.servings+' servings) has been recorded, and available ingredient quantities were deducted from your pantry.</p><p class="smalltext">'+result.deductions.length+' pantry stock batch'+(result.deductions.length===1?'':'es')+' updated. You can adjust quantities in Pantry using the + and − controls.</p><button class="btn green" onclick="closeModal()">Done</button>');
+ };
+}
+function recordCookedMeal(mealId,variantId='',servings=1,day='',occasion=''){
+ const planned=day&&occasion?db.plan[day]?.[occasion]:null;
+ if(day&&occasion&&(!planned||planned.mealId!==mealId||planned.cookedAt))return null;
+ const result=cookingUsage(mealId,variantId,servings);
+ if(!result)return null;
+ for(const delta of result.deductions){
+  const row=db.inventory.find(x=>x.id===delta.inventoryId);
+  if(!row)continue;
+  row.qty=Math.max(0,Number((Math.max(0,Number(row.qty)||0)-delta.qty).toPrecision(12)));
+ }
+ const now=new Date().toISOString(),id=uid();
+ db.cookingHistory??=[];
+ db.cookingHistory.push({id,mealId,mealName:result.recipe.name,variantId:result.recipe.versionId||'',versionName:result.recipe.versionName,servings:result.servings,cookedAt:now,day:day||'',occasion:occasion||'',deductions:result.deductions,missing:result.lines.filter(x=>x.missing>1e-8).map(x=>({ingredientId:x.ingredientId,qty:x.missing,unit:x.unit}))});
+ if(planned){planned.cookedAt=now;planned.cookLogId=id}
+ save();
+ return result;
+}
+
+function aggregatePlan(){let map={};for(const p of plannedThisWeek({includeCooked:false})){let parent=mealById(p.mealId),m=resolveRecipe(parent,p.variantId);if(!m)continue;let factor=(Number(p.servings)||m.servings||1)/(Number(m.servings)||1);for(const line of m.ingredients||[]){let ing=ingById(line.ingredientId);if(!ing||isSpice(ing))continue;let unit=line.unit||ing.unit||'piece',info=unitInfo(unit),key=ing.id+'::'+info.family;map[key]??={ingredientId:ing.id,qty:0,unit,category:ing.category};let converted=convertQty(Number(line.qty||0),unit,map[key].unit);map[key].qty+=Number(converted===null?line.qty:converted)*factor;}}return map}
 function autoAddOutOfStockSpices(){for(const ing of db.ingredients.filter(isSpice)){let inv=db.inventory.find(x=>x.ingredientId===ing.id);let out=!!inv&&inv.spiceStatus==='out';let existing=db.shopping.find(x=>x.source==='spice-auto'&&x.ingredientId===ing.id);if(out&&!existing)db.shopping.push({id:uid(),ingredientId:ing.id,name:ing.name,category:'Spices',qty:0,unit:'',checked:false,source:'spice-auto',auto:true,price:0});if(!out&&existing)db.shopping=db.shopping.filter(x=>!(x.source==='spice-auto'&&x.ingredientId===ing.id))}}
 function addShoppingFromPlan(){let agg=Object.values(aggregatePlan()),oldPlan=db.shopping.filter(x=>x.source==='plan'),other=db.shopping.filter(x=>x.source!=='plan');let next=[];for(const need of agg){let have=pantryQty(need.ingredientId,need.unit),remaining=Math.max(0,need.qty-have);let prior=oldPlan.find(x=>x.ingredientId===need.ingredientId&&convertQty(1,x.unit,need.unit)!==null);if(remaining>0.000001){next.push({id:prior?.id||uid(),ingredientId:need.ingredientId,name:ingById(need.ingredientId)?.name||'Ingredient',qty:remaining,unit:need.unit,category:need.category,checked:prior?.checked||false,source:'plan',price:prior?.price||0,plannedQty:need.qty,pantryDeducted:Math.min(have,need.qty)});}}db.shopping=[...other,...next];autoAddOutOfStockSpices();save();render();let covered=agg.filter(x=>pantryQty(x.ingredientId,x.unit)>=x.qty).length;alert('Shopping list updated. Pantry stock was deducted from planned quantities.'+(covered?' '+covered+' ingredient(s) are fully covered by your pantry.':''))}
 function setMode(mode){appMode=mode;view='home';render()}
@@ -913,7 +1092,7 @@ function toggleHomeDay(day){
  const scroll=window.scrollY;render();requestAnimationFrame(()=>window.scrollTo(0,scroll));
 }
 
-function homeView(){let week=allPlanned(),checked=db.shopping.filter(x=>x.checked).length,spent=db.history.reduce((a,x)=>a+(+x.total||0),0);return `<div class="hero"><div><div class="eyebrow">A calmer kitchen starts here</div><h1>Your food, in good order.</h1><p class="sub">Plan meals, keep your kitchen stocked, and shop with a list that thinks ahead.</p></div><button class="btn green" onclick="openMeal()">＋ Add a meal</button></div><div class="grid"><div class="card stat span3"><span>Meals in your collection</span><strong>${db.meals.length}</strong><span>Recipes ready to roll</span></div><div class="card stat span3"><span>Planned this week</span><strong>${week.length}</strong><span>Meal slots filled</span></div><div class="card stat span3"><span>Shopping list</span><strong>${db.shopping.filter(x=>!x.checked).length}</strong><span>Items still to pick up</span></div><div class="card stat span3"><span>Kitchen inventory</span><strong>${db.inventory.length}</strong><span>Tracked ingredients</span></div><div class="card span7 home-week-menu"><div class="sectionhead"><h2>This week's menu</h2><button class="btn soft small" onclick="go('plan')">Open planner →</button></div><div class="home-menu-days">${weekDays().map(homeDayRow).join('')}</div></div><div class="card span5 home-shopping-progress"><div class="sectionhead"><h2>Shopping progress</h2><button class="btn soft small" onclick="go('shop')">Open list →</button></div><div style="font-size:30px;font-weight:850">${checked}/${db.shopping.length}</div><div class="progress"><i style="width:${db.shopping.length?checked/db.shopping.length*100:0}%"></i></div><p class="smalltext">${db.shopping.length?`${db.shopping.length-checked} things left on the list.`:'Your list is blissfully empty.'}</p><div class="sectionhead" style="margin-top:20px"><h3>Kitchen shortcuts</h3><button class="btn ghost small" onclick="go('kitchen')">Manage →</button></div><p class="smalltext">${db.ingredients.length} ingredients in your library · ${db.inventory.length} inventory entries.</p></div></div>`}
+function homeView(){let week=plannedThisWeek(),checked=db.shopping.filter(x=>x.checked).length,spent=db.history.reduce((a,x)=>a+(+x.total||0),0);return `<div class="hero"><div><div class="eyebrow">A calmer kitchen starts here</div><h1>Your food, in good order.</h1><p class="sub">Plan meals, keep your kitchen stocked, and shop with a list that thinks ahead.</p></div><button class="btn green" onclick="openMeal()">＋ Add a meal</button></div><div class="grid"><div class="card stat span3"><span>Meals in your collection</span><strong>${db.meals.length}</strong><span>Recipes ready to roll</span></div><div class="card stat span3"><span>Planned this week</span><strong>${week.length}</strong><span>Meal slots filled</span></div><div class="card stat span3"><span>Shopping list</span><strong>${db.shopping.filter(x=>!x.checked).length}</strong><span>Items still to pick up</span></div><div class="card stat span3"><span>Kitchen inventory</span><strong>${db.inventory.length}</strong><span>Tracked ingredients</span></div><div class="card span7 home-week-menu"><div class="sectionhead"><h2>This week's menu</h2><button class="btn soft small" onclick="go('plan')">Open planner →</button></div><div class="home-menu-days">${weekDays().map(homeDayRow).join('')}</div></div><div class="card span5 home-shopping-progress"><div class="sectionhead"><h2>Shopping progress</h2><button class="btn soft small" onclick="go('shop')">Open list →</button></div><div style="font-size:30px;font-weight:850">${checked}/${db.shopping.length}</div><div class="progress"><i style="width:${db.shopping.length?checked/db.shopping.length*100:0}%"></i></div><p class="smalltext">${db.shopping.length?`${db.shopping.length-checked} things left on the list.`:'Your list is blissfully empty.'}</p><div class="sectionhead" style="margin-top:20px"><h3>Kitchen shortcuts</h3><button class="btn ghost small" onclick="go('kitchen')">Manage →</button></div><p class="smalltext">${db.ingredients.length} ingredients in your library · ${db.inventory.length} inventory entries.</p></div></div>`}
 
 function getRecipeFamilies(){
  return Array.isArray(db?.settings?.recipeFamilies)?db.settings.recipeFamilies:DEFAULT_RECIPE_FAMILIES;
@@ -1153,7 +1332,7 @@ function plannerSlotsForDay(day){
  const seen=new Set();
  return all.filter(name=>{const n=norm(name);if(!n||seen.has(n))return false;seen.add(n);return true});
 }
-function planView(){let days=weekDays(),planned=allPlanned().length;return `<div class="hero"><div><div class="eyebrow">Seven-day rhythm</div><h1>Meal planner</h1><p class="sub">Plan breakfast, apéro, goûter and more. Servings scale the shopping list automatically.</p></div><button class="btn green" onclick="addShoppingFromPlan()">Build shopping list ↗</button></div><div class="grid">${days.map(d=>{let k=dateKey(d),slots=db.plan[k]||{};return `<section class="day span?"><div class="dayhead"><b>${fmtDate(k)}</b><span class="badge">${Object.values(slots).filter(Boolean).length} planned</span></div>${plannerSlotsForDay(k).map(s=>{let p=slots[s],m=p&&mealById(p.mealId);return `<div class="slot" data-extra="${!CORE_MEAL_SLOTS.includes(s)}" ondragover="event.preventDefault()" data-day="${k}" data-occasion="${esc(s)}" ondrop="dropRecipe(event,this.dataset.day,this.dataset.occasion)">${m?`<div class="plan-slot-main"><div class="plan-slot-info"><span class="slot-kind">${esc(s)}</span><b draggable="true" ondragstart="dragRecipe(event,'${m.id}')">${esc(m.name)}</b><span class="smalltext">${p.servings} servings${p.variantId&&recipeVersion(m,p.variantId)?' · '+esc(versionTitle(m,p.variantId)):''}</span></div><div class="plan-slot-actions"><button class="btn ghost small" onclick="editPlanSlot(this.closest('.slot').dataset.day,this.closest('.slot').dataset.occasion)">Edit</button><button class="btn danger small" aria-label="Remove recipe from ${esc(s)}" onclick="clearPlanSlot(this.closest('.slot').dataset.day,this.closest('.slot').dataset.occasion)">×</button></div></div>`:`<div class="plan-slot-main"><span class="muted">${esc(s)}</span><button class="btn soft small plan-add" onclick="editPlanSlot(this.closest('.slot').dataset.day,this.closest('.slot').dataset.occasion)">＋ Add</button></div>`}${!CORE_MEAL_SLOTS.includes(s)?`<button type="button" class="occasion-remove" aria-label="Remove ${esc(s)} occasion" onclick="removeDayOccasion(this.closest('.slot').dataset.day,this.closest('.slot').dataset.occasion)">Remove occasion</button>`:''}</div>`}).join('')}<button type="button" class="planner-extra-toggle" onclick="openOccasionPicker('${k}')">＋ Add an occasion</button></section>`}).join('')}</div><div class="card" style="margin-top:14px"><div class="sectionhead"><h2>Planned ingredients</h2><span class="badge">${planned} meal slots</span></div>${Object.values(aggregatePlan()).map(x=>`<div class="listline"><div class="grow"><b>${esc(ingById(x.ingredientId)?.name||'Ingredient')}</b><small>${esc(x.category)}</small></div><b>${esc(formatQuantity(x.qty,x.unit))}</b></div>`).join('')||'<p class="smalltext">Add meals to your week to see the ingredient roll-up.</p>'}</div>`}
+function planView(){let days=weekDays(),planned=plannedThisWeek().length;return `<div class="hero"><div><div class="eyebrow">Seven-day rhythm</div><h1>Meal planner</h1><p class="sub">Plan breakfast, apéro, goûter and more. Servings scale the shopping list automatically.</p></div><button class="btn green" onclick="addShoppingFromPlan()">Build shopping list ↗</button></div><div class="grid">${days.map(d=>{let k=dateKey(d),slots=db.plan[k]||{};return `<section class="day span?"><div class="dayhead"><b>${fmtDate(k)}</b><span class="badge">${Object.values(slots).filter(Boolean).length} planned</span></div>${plannerSlotsForDay(k).map(s=>{let p=slots[s],m=p&&mealById(p.mealId);return `<div class="slot" data-extra="${!CORE_MEAL_SLOTS.includes(s)}" ondragover="event.preventDefault()" data-day="${k}" data-occasion="${esc(s)}" ondrop="dropRecipe(event,this.dataset.day,this.dataset.occasion)">${m?`<div class="plan-slot-main"><div class="plan-slot-info"><span class="slot-kind">${esc(s)}</span><b draggable="true" ondragstart="dragRecipe(event,'${m.id}')">${esc(m.name)}</b><span class="smalltext">${p.servings} servings${p.variantId&&recipeVersion(m,p.variantId)?' · '+esc(versionTitle(m,p.variantId)):''}</span></div><div class="plan-slot-actions">${p.cookedAt?`<span class="planned-cooked-badge" title="Already deducted from pantry">✓ Cooked</span>`:`<button type="button" class="btn soft small planned-cook-btn" onclick="openCookedFromSlot(this.closest('.slot').dataset.day,this.closest('.slot').dataset.occasion)">✓ Cooked it</button>`}<button class="btn ghost small" onclick="editPlanSlot(this.closest('.slot').dataset.day,this.closest('.slot').dataset.occasion)">Edit</button><button class="btn danger small" aria-label="Remove recipe from ${esc(s)}" onclick="clearPlanSlot(this.closest('.slot').dataset.day,this.closest('.slot').dataset.occasion)">×</button></div></div>`:`<div class="plan-slot-main"><span class="muted">${esc(s)}</span><button class="btn soft small plan-add" onclick="editPlanSlot(this.closest('.slot').dataset.day,this.closest('.slot').dataset.occasion)">＋ Add</button></div>`}${!CORE_MEAL_SLOTS.includes(s)?`<button type="button" class="occasion-remove" aria-label="Remove ${esc(s)} occasion" onclick="removeDayOccasion(this.closest('.slot').dataset.day,this.closest('.slot').dataset.occasion)">Remove occasion</button>`:''}</div>`}).join('')}<button type="button" class="planner-extra-toggle" onclick="openOccasionPicker('${k}')">＋ Add an occasion</button></section>`}).join('')}</div><div class="card" style="margin-top:14px"><div class="sectionhead"><h2>Planned ingredients</h2><span class="badge">${planned} meal slots</span></div>${Object.values(aggregatePlan()).map(x=>`<div class="listline"><div class="grow"><b>${esc(ingById(x.ingredientId)?.name||'Ingredient')}</b><small>${esc(x.category)}</small></div><b>${esc(formatQuantity(x.qty,x.unit))}</b></div>`).join('')||'<p class="smalltext">Add meals to your week to see the ingredient roll-up.</p>'}</div>`}
 
 function updatePlanVersionOptions(mealId,selected=''){
  const select=document.getElementById('planVariantSelect');if(!select)return;
@@ -1313,7 +1492,25 @@ function finishShopping(){
  };
 }
 function kitchenView(){let q=window.kitchenQ||'',tab=window.kitchenTab||'Inventory',inv=db.inventory;return `<div class="hero"><div><div class="eyebrow">Your kitchen, accounted for</div><h1>Kitchen</h1><p class="sub">The ingredient library is the source of truth. Inventory tracks what you actually have.</p></div><button class="btn green" onclick="openInventory()">＋ Add inventory</button></div><div class="tabs">${['Inventory','Ingredient library'].map(x=>`<button class="${tab===x?'active':''}" onclick="window.kitchenTab='${x}';render()">${x}</button>`).join('')}</div>${tab==='Inventory'?`<div class="card"><div class="sectionhead"><h2>What you have</h2><span class="badge">${inv.length} tracked</span></div><div class="field"><input placeholder="Search your kitchen…" value="${esc(q)}" aria-label="Search pantry inventory" oninput="window.kitchenQ=this.value;renderKitchenSearch(this.value)"></div><p id="kitchenSearchSummary" class="search-summary" role="status">${inv.filter(x=>fieldWordMatch(x.name,q)).length} items</p><div id="inventoryList">${inv.filter(x=>fieldWordMatch(x.name,q)).map(inventoryRow).join('')||'<div class="empty">Nothing tracked yet. Add an ingredient to start your inventory.</div>'}</div></div>`:`<div class="card"><div class="sectionhead"><div><h2>Ingredient library</h2><p class="smalltext">Search, manage aliases, or create a new canonical ingredient.</p></div><button class="btn green small" onclick="openIngredient()">＋ Create ingredient</button></div><div class="field"><input placeholder="Search ingredients…" value="${esc(q)}" aria-label="Search ingredient library" oninput="window.kitchenQ=this.value;renderLibrarySearch(this.value)"></div><p id="kitchenSearchSummary" class="search-summary" role="status">${db.ingredients.filter(x=>fieldWordMatch(x.name+" "+(x.aliases||[]).join(" "),q)).length} ingredients</p><div id="libraryList">${libraryRows(q)}</div></div>`}`}
-function inventoryRow(x){let ing=ingById(x.ingredientId),sp=isSpice(ing)||x.isSpice;return `<div class="listline"><div class="grow"><b>${esc(x.name)}</b><small>${esc(x.category)} · ${sp?'Spice stock: '+(x.spiceStatus||'stocked'):`${esc(formatQuantity(x.qty,x.unit))}`} ${x.expiry?'· Best before '+esc(x.expiry):''}</small></div>${sp?`<span class="badge ${x.spiceStatus==='out'?'orange':''}">${x.spiceStatus==='out'?'Out':x.spiceStatus==='low'?'Low':'Good'}</span>`:''}<button class="btn soft small" onclick="openInventory('${x.id}')">Edit</button><button class="btn danger small" onclick="deleteInventory('${x.id}')">×</button></div>`}
+
+function pantryQuantityStep(unit){
+ const key=norm(unit||'piece');
+ const known={g:50,gram:50,grams:50,kg:.1,mg:100,ml:50,cl:5,dl:1,l:.1,oz:1,lb:.25,tsp:1,tbsp:1,cup:.25};
+ return known[key]||1;
+}
+function adjustPantryQuantity(id,direction){
+ const row=db.inventory.find(x=>x.id===id);
+ if(!row||row.isSpice||isSpice(ingById(row.ingredientId)))return false;
+ const step=pantryQuantityStep(row.unit),before=Math.max(0,Number(row.qty)||0);
+ const next=Math.max(0,Number((before+Math.sign(direction)*step).toFixed(6)));
+ if(before===next)return false;
+ row.qty=next;
+ save();
+ if(appMode==='kitchen'&&view==='kitchen'&&(window.kitchenTab||'Inventory')==='Inventory')renderKitchenSearch(window.kitchenQ||'');
+ return true;
+}
+
+function inventoryRow(x){let ing=ingById(x.ingredientId),sp=isSpice(ing)||x.isSpice;return `<div class="listline"><div class="grow"><b>${esc(x.name)}</b><small>${esc(x.category)} · ${sp?'Spice stock: '+(x.spiceStatus||'stocked'):`${esc(formatQuantity(x.qty,x.unit))}`} ${x.expiry?'· Best before '+esc(x.expiry):''}</small></div>${sp?`<span class="badge ${x.spiceStatus==='out'?'orange':''}">${x.spiceStatus==='out'?'Out':x.spiceStatus==='low'?'Low':'Good'}</span>`:`<div class="pantry-quantity-controls" role="group" aria-label="Adjust ${esc(x.name)} quantity"><button type="button" aria-label="Decrease ${esc(x.name)} by ${esc(formatQuantity(pantryQuantityStep(x.unit),x.unit))}" title="Subtract ${esc(formatQuantity(pantryQuantityStep(x.unit),x.unit))}" onclick="adjustPantryQuantity('${x.id}',-1)" ${Number(x.qty)<=0?'disabled':''}>−</button><span class="pantry-current-quantity" aria-live="polite">${esc(formatQuantity(x.qty,x.unit))}</span><button type="button" aria-label="Increase ${esc(x.name)} by ${esc(formatQuantity(pantryQuantityStep(x.unit),x.unit))}" title="Add ${esc(formatQuantity(pantryQuantityStep(x.unit),x.unit))}" onclick="adjustPantryQuantity('${x.id}',1)">＋</button></div>`}<div class="pantry-row-actions"><button class="btn soft small" onclick="openInventory('${x.id}')">Edit</button><button class="btn danger small" aria-label="Delete ${esc(x.name)}" onclick="deleteInventory('${x.id}')">×</button></div></div>`}
 function renderKitchenSearch(q){let el=document.getElementById('inventoryList'),items=db.inventory.filter(x=>fieldWordMatch(x.name,q));if(el)el.innerHTML=items.map(inventoryRow).join('')||'<div class="empty">No matching inventory items. Try the beginning of a different word.</div>';updateSearchSummary('kitchenSearchSummary',null,items.length,'items')}
 function libraryRows(q=''){return db.ingredients.filter(x=>fieldWordMatch(x.name+' '+(x.aliases||[]).join(' '),q)).sort((a,b)=>a.category.localeCompare(b.category)||a.name.localeCompare(b.name)).map(x=>`<div class="listline"><div class="grow"><b>${esc(x.name)}</b><small>${esc(x.category)} · Default unit: ${esc(x.unit)} ${x.aliases?.length?'· Also known as '+esc(x.aliases.join(', ')):''}</small></div><button class="btn soft small" onclick="openIngredient('${x.id}')">Edit</button></div>`).join('')||'<div class="empty">No matching ingredients. Create it and it will be available everywhere.</div>'}
 function renderLibrarySearch(q){let el=document.getElementById('libraryList'),count=db.ingredients.filter(x=>fieldWordMatch(x.name+' '+(x.aliases||[]).join(' '),q)).length;if(el)el.innerHTML=libraryRows(q);updateSearchSummary('kitchenSearchSummary',null,count,'ingredients')}
@@ -1377,13 +1574,13 @@ function recipeMatchesPantry(m){let lines=(m.ingredients||[]).filter(x=>!isSpice
 function cookableView(){let list=db.meals.flatMap(m=>recipeVersionList(m).map(v=>{let chosen=resolveRecipe(m,v.id);return {m:chosen,...recipeMatchesPantry(chosen)}})).sort((a,b)=>a.missing.length-b.missing.length||b.ratio-a.ratio);return `<div class="hero"><div><div class="eyebrow">Pantry-first inspiration</div><h1>What can I cook?</h1><p class="sub">Recipes ranked by what you already have. Spices are treated as pantry staples.</p></div></div><div class="field"><input placeholder="Search recipes or ingredients…" aria-label="Search cookable recipes" oninput="filterCookable(this.value)"></div><p class="search-summary" id="cookableSearchSummary" role="status">${list.length} recipes</p><div id="cookableSearchEmpty" class="search-no-results hidden">No matching recipes. Try another word beginning.</div><div id="cookableGrid" class="meal-grid">${list.map(x=>`<article class="meal-card" data-q="${esc(norm(x.m.name+' '+x.m.versionName+' '+x.m.ingredients.map(i=>ingById(i.ingredientId)?.name||'').join(' ')))}" onclick="openRecipe('${x.m.id}','${x.m.versionId}')">${x.m.photo?`<img class="meal-photo" src="${x.m.photo}">`:'<div class="meal-photo" style="display:grid;place-items:center;font-size:36px">🍲</div>'}<h3>${esc(x.m.name)}</h3>${x.m.versionId?`<span class="version-chip">${esc(x.m.versionName)}</span>`:''}<div class="badge">${x.missing.length===0?'You have everything':x.missing.length+' ingredient(s) missing'}</div><p class="smalltext">${x.owned}/${x.lines} ingredients in pantry${x.missing.length?'<br>Still need: '+x.missing.map(i=>esc(ingById(i.ingredientId)?.name||'')).join(', '):''}</p></article>`).join('')||'<div class="empty">Add recipes to get pantry-based suggestions.</div>'}</div>`}
 function filterCookable(q){let matches=0;document.querySelectorAll('#cookableGrid .meal-card').forEach(x=>{let found=fieldWordMatch(x.dataset.q,q);x.classList.toggle('hidden',!found);if(found)matches++});updateSearchSummary('cookableSearchSummary','cookableSearchEmpty',matches,'recipes')}
 function duplicateMeal(id){let m=mealById(id);if(!m)return;let copy=JSON.parse(JSON.stringify(m));copy.id=uid();copy.name=m.name+' (copy)';copy.favorite=false;db.meals.push(copy);save();render();openMeal(copy.id)}
-const _mealCard30=mealCard;mealCard=function(m){return _mealCard30(m).replace(`<button class="btn ghost small" onclick="event.stopPropagation();openMeal('${m.id}')">`, `<button class="btn ghost small" onclick="event.stopPropagation();duplicateMeal('${m.id}')">⧉ Duplicate</button><button class="btn ghost small" onclick="event.stopPropagation();openMeal('${m.id}')">`)};
-const _openRecipe30=openRecipe;openRecipe=function(id,versionId=''){_openRecipe30(id,versionId);let a=document.querySelector('#modbody .recipe-detail .row:last-child');if(a)a.insertAdjacentHTML('afterbegin',`<button class="btn ghost" onclick="duplicateMeal('${id}')">⧉ Duplicate</button><button class="btn" onclick="startCooking('${id}','${versionId}')">▶ Cooking mode</button>`)};
+const _mealCard30=mealCard;mealCard=function(m){return _mealCard30(m).replace(`<button class="btn ghost small" onclick="event.stopPropagation();openMeal('${m.id}')">`, `<button type="button" class="btn ghost small duplicate-icon-button" aria-label="Duplicate recipe: ${esc(m.name)}" title="Duplicate recipe" onclick="event.stopPropagation();duplicateMeal('${m.id}')">⧉</button><button class="btn ghost small" onclick="event.stopPropagation();openMeal('${m.id}')">`)};
+const _openRecipe30=openRecipe;openRecipe=function(id,versionId=''){_openRecipe30(id,versionId);let a=document.querySelector('#modbody .recipe-detail .row:last-child');if(a)a.insertAdjacentHTML('afterbegin',`<button type="button" class="btn green cooked-recipe-button" onclick="openCookedConfirm('${id}','${versionId}')">✓ I cooked this</button><button type="button" class="btn ghost" onclick="duplicateMeal('${id}')">⧉ Duplicate</button><button type="button" class="btn" onclick="startCooking('${id}','${versionId}')">▶ Cooking mode</button>`)};
 function startCooking(id,versionId=''){let parent=mealById(id),m=resolveRecipe(parent,versionId);if(!m)return;let steps=m.steps||[],o=document.getElementById('cookOverlay');o.innerHTML=`<div class="cook-inner"><div class="row" style="justify-content:space-between"><div><div class="eyebrow">Maison cooking mode</div><h1>${esc(m.name)}</h1></div><button class="btn ghost" onclick="closeCooking()">✕ Exit</button></div><div class="progress"><i id="cookProgress" style="width:${steps.length?100/steps.length:0}%"></i></div><p id="cookCount" class="smalltext">Step ${steps.length?1:0} of ${steps.length}</p><div id="cookStep" class="cook-step">${steps.length?esc(steps[0]):'No cooking steps yet. Edit this recipe to add them.'}</div><div class="row"><button class="btn ghost" id="cookPrev" onclick="cookMove(-1)" disabled>← Previous</button><button class="btn green" id="cookNext" onclick="cookMove(1)" ${steps.length?'':'disabled'}>Next step →</button></div><div class="smart-panel"><b>Ingredients</b>${(m.ingredients||[]).map(x=>`<div class="listline"><span class="grow">${esc(ingById(x.ingredientId)?.name||'')}</span><b>${isSpice(ingById(x.ingredientId))?'To taste':esc(formatQuantity(x.qty,x.unit))}</b></div>`).join('')}</div></div>`;o.dataset.steps=JSON.stringify(steps);o.dataset.index='0';o.classList.add('show')}
 function cookMove(d){let o=document.getElementById('cookOverlay'),a=JSON.parse(o.dataset.steps||'[]'),i=Math.max(0,Math.min(a.length-1,(+o.dataset.index||0)+d));o.dataset.index=i;document.getElementById('cookStep').textContent=a[i]||'';document.getElementById('cookCount').textContent=`Step ${i+1} of ${a.length}`;document.getElementById('cookProgress').style.width=((i+1)/a.length*100)+'%';document.getElementById('cookPrev').disabled=i===0;let b=document.getElementById('cookNext');b.textContent=i===a.length-1?'Finish ✓':'Next step →';b.onclick=i===a.length-1?closeCooking:()=>cookMove(1)}
 function closeCooking(){document.getElementById('cookOverlay').classList.remove('show')}
 function expiryPanel(){let a=expiryItems();return `<div class="smart-panel"><div class="sectionhead"><b>⏳ Use these soon</b><span class="badge">${a.length}</span></div>${a.slice(0,5).map(x=>`<div class="listline"><div class="grow"><b>${esc(x.name)}</b><small>${x.days<0?'Past best-before date':x.days===0?'Best before today':'Best before in '+x.days+' day(s)'}</small></div><span class="expiry-tag">${x.days<0?'Past date':x.days===0?'Today':x.days+' days'}</span></div>`).join('')||'<p class="smalltext">No upcoming expiry dates. Your pantry is looking fresh.</p>'}</div>`}
-const _homeView30=homeView;homeView=function(){return _homeView30()+expiryPanel()+`<div class="card" style="margin-top:14px"><div class="sectionhead"><div><h2>Need dinner inspiration?</h2><p class="smalltext">Find recipes using what you already own.</p></div><button class="btn green" onclick="go('cookable')">What can I cook? →</button></div></div>`};
+const _homeView30=homeView;homeView=function(){return _homeView30()+expiryPanel()+`<div class="card dinner-inspiration-card" style="margin-top:14px"><div class="sectionhead"><div class="inspiration-copy"><div class="eyebrow">YOUR KITCHEN, YOUR IDEAS</div><h2>Need dinner inspiration?</h2><p class="smalltext">Find recipes using what you already own.</p></div><button class="btn green inspiration-action" onclick="go('cookable')"><span>What can I cook?</span><span aria-hidden="true">↗</span></button></div></div>`};
 function aisleFor(c,n){let s=norm(c+' '+n);if(/produce|fruit|vegetable/.test(s))return'Fruit & vegetables';if(/meat|fish|seafood|poultry/.test(s))return'Meat & fish';if(/dairy|cheese|milk|egg/.test(s))return'Dairy & chilled';if(/bakery|bread/.test(s))return'Bakery';if(/frozen/.test(s))return'Frozen';if(/spice|herb|condiment|pantry|dry/.test(s))return'Pantry';return'Household & other'}
 function shoppingMode(){let groups={};db.shopping.filter(x=>!x.checked).forEach(x=>{let a=aisleFor(x.category,x.name);(groups[a]??=[]).push(x)});showModal('Shopping mode',`<p class="smalltext">Grouped into store-friendly aisles. Tick products as they go into your basket.</p>${Object.entries(groups).map(([a,arr])=>`<div class="aisle-head">${esc(a)}</div>${arr.map(x=>`<label class="listline"><input class="check" type="checkbox" onchange="toggleShop('${x.id}',this.checked)"><span class="grow"><b>${esc(x.name)}</b><small>${x.qty?esc(x.qty+' '+x.unit):'As needed'}</small></span></label>`).join('')}`).join('')||'<div class="empty">Your shopping list is empty.</div>'}`)}
 function openReceiptScan(){showModal('Receipt scanner',`<p class="smalltext">Choose a receipt photo. On-device OCR will extract text when supported. Review the result before saving.</p><div class="field"><label>Receipt photo</label><input id="receiptFile" type="file" accept="image/*" capture="environment"></div><div id="receiptStatus" class="smalltext"></div><div class="field"><label>Recognised receipt text</label><textarea id="receiptText" rows="7" placeholder="OCR text appears here, or paste it manually."></textarea></div><div class="two"><div class="field"><label>Store</label><input id="receiptStore" value="${esc(db.settings.store)}"></div><div class="field"><label>Total</label><input id="receiptTotal" type="number" min="0" step=".01"></div></div><button class="btn green" onclick="saveScannedReceipt()">Save receipt</button>`);document.getElementById('receiptFile').onchange=async e=>{let f=e.target.files[0];if(!f)return;let st=document.getElementById('receiptStatus');try{if(!window.Tesseract)await new Promise((ok,no)=>{let t=document.createElement('script');t.src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';t.onload=ok;t.onerror=no;document.head.append(t)});st.textContent='Reading receipt…';let r=await Tesseract.recognize(f,'eng+fra');document.getElementById('receiptText').value=r.data.text;let m=r.data.text.match(/(?:total|à payer|net à payer)[^\d]*(\d+[,.]\d{2})/i);if(m)document.getElementById('receiptTotal').value=m[1].replace(',','.');st.textContent='Text extracted. Please verify the total and store.'}catch(e){st.textContent='OCR unavailable. Paste the text and enter the total manually.'}}}
