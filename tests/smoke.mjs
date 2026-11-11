@@ -9,7 +9,7 @@ await page.route('https://cdn.jsdelivr.net/npm/@supabase/**',route=>route.abort(
 try {
  await page.goto(origin,{waitUntil:'domcontentloaded'});
  await page.waitForSelector('#mobileNav button');
- assert.match(await page.locator('#appVersion').innerText(),/v3\.8\.1/);
+ assert.match(await page.locator('#appVersion').innerText(),/v3\.8\.2/);
  assert.match(await page.locator('.brand').innerText(),/House & Cart/);
  // The small version badge sits on the same baseline as the app name.
  assert.equal(await page.locator('.brand-name-row #appVersion').count(),1);
@@ -533,6 +533,32 @@ async function testCloudRefreshGuards(browser,origin){
   await page.waitForTimeout(150);
   assert.equal(await page.evaluate(()=>window.__syncReads),1,'Refresh must only start one cloud read');
   assert.equal(await page.getByRole('dialog',{name:/Choose which data to keep/}).isVisible(),false,'Identical saved data must never prompt on refresh');
+  // Two installations may generate different random IDs for the same built-in
+  // ingredient and essential records. This is not a real data conflict.
+  const sameDataDifferentIds=await page.evaluate(()=>{
+   const remote=window.__refreshCloud.row;
+   const replacements=new Map();
+   for(const item of [...remote.payload.ingredients.filter(x=>!x.custom),...remote.payload.cleaningEssentials]){
+    const replacement='remote-default-'+item.id;
+    replacements.set(item.id,replacement);
+    item.id=replacement;
+   }
+   const rewrite=x=>{
+    if(Array.isArray(x))return x.map(rewrite);
+    if(x&&typeof x==='object'){for(const k of Object.keys(x))x[k]=rewrite(x[k]);return x}
+    return typeof x==='string'&&replacements.has(x)?replacements.get(x):x;
+   };
+   rewrite(remote.payload);
+   window.__refreshCloud.row=remote;
+   return comparableCloudText(remote.payload)===comparableCloudText(cloudPayload());
+  });
+  assert.equal(sameDataDifferentIds,true,'Random built-in IDs must compare as equivalent');
+  const identicalIds=await page.evaluate(()=>Promise.race([syncNow('manual'),new Promise(r=>setTimeout(()=>r('stalled'),1200))]));
+  assert.equal(identicalIds,true,'Different default IDs sync without a popup');
+  assert.equal(await page.getByRole('dialog',{name:/Choose which data to keep/}).isVisible(),false);
+  await page.reload({waitUntil:'domcontentloaded'});
+  await page.waitForFunction(()=>document.getElementById('cloudStatusLabel')?.textContent.includes('Cloud synced'));
+  assert.equal(await page.getByRole('dialog',{name:/Choose which data to keep/}).isVisible(),false,'Random built-in IDs remain silent on refresh');
   // Updated-at changes are not content changes. Likewise old category schema is equivalent.
   await page.evaluate(()=>{
    let row=window.__refreshCloud.row;
