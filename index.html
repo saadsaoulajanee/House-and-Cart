@@ -661,7 +661,11 @@ async function syncNow(mode='both'){
   const conflictKey=remoteHash===null?null:cloudUser.id+':'+localHash+':'+remoteHash;
   let action='none';
   if(!remoteText)action='upload';
-  else if(remoteText===localText)action='none';
+  else if(remoteText===localText){
+   // Values match, but an older cloud schema may lack category fields or purchase timestamps.
+   // Upgrade that remote format without a conflict prompt, so the saved baseline stays consistent.
+   action=stableJson(comparableCloudPayload(remote.payload))===stableJson(comparableCloudPayload(local))?'none':'upload';
+  }
   else if(!baseline)action=meaningfulHomeData(local)?'choose':'download';
   else if(remoteHash===baseline)action='upload';
   else if(localHash===baseline)action='download';
