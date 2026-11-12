@@ -848,9 +848,14 @@ body{
 .styled-select-option:hover,.styled-select-option.selected{background:#F5F0E7;color:#26323A}
 
 </style>
-</head>
+<style>
+.batch-ingredient-results{max-height:210px;overflow:auto;border:1px solid var(--line);border-radius:14px;margin:8px 0 18px;overscroll-behavior:contain}
+.batch-ingredient-option{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;text-align:left;padding:9px 12px;background:transparent;color:inherit;border:0;border-bottom:1px solid var(--line);font:inherit;cursor:pointer}
+.batch-ingredient-option:last-child{border-bottom:0}.batch-ingredient-option small{display:block;font-size:11px;color:var(--muted)}.batch-ingredient-option[aria-pressed=true]{background:#eee6d6;color:#58462e}.batch-ingredient-option strong{font-size:20px}
+.batch-ingredient-row{border-bottom:1px solid var(--line);padding:10px 0}.batch-ingredient-heading{display:flex;align-items:center;justify-content:space-between;gap:8px}.batch-ingredient-row .two{margin-top:6px}.batch-ingredient-row .field{min-width:0}.batch-ingredient-row .field input{min-width:0;width:100%}#batchIngredientSubmit{width:100%}#batchIngredientError{color:#9b5143}
+</style></head>
 <body><div class="app">
-<header class="top"><div class="brand"><img class="logo brand-logo" src="./icon-192.png?v=3.7.1" width="48" height="48" alt="House & Cart icon"><div class="brand-copy"><div class="brand-name-row"><span style="font-family:Georgia,serif;font-size:27px;font-weight:500;letter-spacing:-1px">House &amp; Cart</span><span class="version-tag" id="appVersion" title="House & Cart app version">v3.9.15</span></div><div class="smalltext" style="letter-spacing:2px;text-transform:uppercase;font-size:9px">Your everyday home companion</div></div></div><div class="top-actions"><span class="pill" id="saveState">Saved on this device</span><button class="btn soft small" onclick="exportData()">Export backup</button><button class="btn ghost small" onclick="document.getElementById('importFile').click()">Import</button><button class="btn green small" onclick="openCloudAccount()">Account & sync</button><input id="importFile" type="file" accept=".json,application/json" hidden></div><button class="mobile-menu-button" type="button" aria-label="Open app menu" onclick="openMoreMenu()">☰ <span>Menu</span></button></header>
+<header class="top"><div class="brand"><img class="logo brand-logo" src="./icon-192.png?v=3.7.1" width="48" height="48" alt="House & Cart icon"><div class="brand-copy"><div class="brand-name-row"><span style="font-family:Georgia,serif;font-size:27px;font-weight:500;letter-spacing:-1px">House &amp; Cart</span><span class="version-tag" id="appVersion" title="House & Cart app version">v3.9.16</span></div><div class="smalltext" style="letter-spacing:2px;text-transform:uppercase;font-size:9px">Your everyday home companion</div></div></div><div class="top-actions"><span class="pill" id="saveState">Saved on this device</span><button class="btn soft small" onclick="exportData()">Export backup</button><button class="btn ghost small" onclick="document.getElementById('importFile').click()">Import</button><button class="btn green small" onclick="openCloudAccount()">Account & sync</button><input id="importFile" type="file" accept=".json,application/json" hidden></div><button class="mobile-menu-button" type="button" aria-label="Open app menu" onclick="openMoreMenu()">☰ <span>Menu</span></button></header>
 <div class="row mode-row" style="justify-content:space-between;align-items:center;margin:8px 0 4px"><div class="tabs" style="margin:0"><button id="modeKitchen" class="active" onclick="setMode('kitchen')">🍋 Kitchen</button><button id="modeCare" onclick="setMode('care')">🧺 Home care</button></div><div class="cloud-status-bar" id="cloudStatusBar" data-state="local" role="status" aria-live="polite"><span class="cloud-status-dot" aria-hidden="true"></span><strong id="cloudStatusLabel">Saved on this device</strong></div><span class="smalltext" id="modeCaption">Recipes, ingredients & weekly rituals</span></div><nav class="nav" id="nav" aria-label="Main navigation"><button data-view="home" class="active">⌂ Overview</button><button data-view="meals">♡ Recipes</button><button data-view="plan">▦ Planner</button><button data-view="shop">🛒 Shopping</button><button data-view="kitchen">🥬 Pantry</button><button data-view="history">↗ History</button><button data-view="cookable" style="display:none">✨ What can I cook?</button><button data-view="budget" style="display:none">◉ Budget</button></nav>
 <main id="main" tabindex="-1"></main></div><nav id="mobileNav" class="mobile-bottom-nav" aria-label="Mobile navigation"></nav>
 <div class="modalback" id="modalback"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="modtitle" tabindex="-1"><div class="modalhead"><h2 id="modtitle">Edit</h2><button class="x" type="button" aria-label="Close dialog" onclick="closeModal()">✕</button></div><div id="modbody"></div></div></div>
@@ -1887,31 +1892,62 @@ function updateManualShoppingPreview(){
  const stock=compatible.reduce((total,row)=>total+convertQty(Number(row.qty)||0,row.unit,unit),0);
  preview.textContent='Add '+formatQuantity(qty,unit)+' '+ing.name+' to the shopping list.'+(compatible.length?' Currently in pantry: '+formatQuantity(stock,unit)+'.':'');
 }
+function buildManualShoppingBatch(rows,existing){
+ const seen=new Set(),items=[];
+ for(const row of rows){
+  const ing=ingById(row.id);
+  if(!ing||seen.has(ing.id))continue;
+  seen.add(ing.id);
+  const spice=isSpice(ing),qty=Number(row.qty),unit=row.unit;
+  if(!spice&&(!Number.isFinite(qty)||qty<=0||!unit))throw Error('Enter a valid quantity and unit for '+ing.name+'.');
+  if(spice&&existing.some(x=>x.ingredientId===ing.id&&!x.checked))continue;
+  items.push({id:uid(),ingredientId:ing.id,name:ing.name,category:spice?'Spices':String(ing.category||'Other').trim()||'Other',qty:spice?0:qty,unit:spice?'':unit,checked:false,source:'manual',price:0});
+ }
+ return items;
+}
 function addManualItem(){
  const sorted=db.ingredients.slice().sort((a,b)=>a.name.localeCompare(b.name));
- const body='<form id="manualForm">'+
-  '<div class="field"><label>Find an ingredient</label>'+pickerMarkup('ingredient','Search your ingredient library…',sorted,'','manual-shop-ingredient')+
-  '<p class="smalltext" id="manualShoppingIngredientHint">Choose a product from the ingredient library. The category and unit will be filled in automatically.</p></div>'+
-  '<div class="two manual-shopping-quantity-row"><div class="field"><label for="manualShoppingQty">Quantity to buy</label><input id="manualShoppingQty" name="qty" type="number" required min="0.000001" step="any" placeholder="e.g. 500"></div>'+
-  '<div class="field"><label>Unit of measurement</label><div id="manualShoppingUnitHolder">'+unitSelect('unit','piece','manual-shopping-unit')+'</div></div></div>'+
-  '<p class="manual-shopping-preview" id="manualShoppingPreview" role="status" aria-live="polite">Choose an ingredient to see its suggested unit.</p>'+
-  '<div class="row"><button type="submit" class="btn green">＋ Add to shopping list</button></div></form>';
- showModal('Add ingredient to shopping list',body);
- const form=document.getElementById('manualForm');
- form.querySelector('.search-picker select').addEventListener('change',updateManualShoppingIngredient);
- form.addEventListener('input',e=>{if(e.target.name==='qty'||e.target.classList.contains('custom-unit'))updateManualShoppingPreview()});
- form.addEventListener('change',e=>{if(e.target.name==='unit')updateManualShoppingPreview()});
+ const selected=new Map();
+ showModal('Add ingredients to shopping list',`<form id="manualForm">
+ <div class="field"><label for="batchIngredientSearch">Find ingredients</label><input id="batchIngredientSearch" type="search" autocomplete="off" placeholder="Search your ingredient library…"></div>
+ <p class="smalltext">Tap ingredients to select several, then enter their quantities below.</p>
+ <div id="batchIngredientResults" class="batch-ingredient-results"></div>
+ <div class="sectionhead"><b>Selected ingredients</b><span id="batchIngredientCount" class="badge">0 selected</span></div>
+ <div id="batchIngredientRows"></div>
+ <p id="batchIngredientError" class="smalltext" role="alert"></p>
+ <div class="row"><button type="submit" id="batchIngredientSubmit" class="btn green" disabled>＋ Add to shopping list</button></div></form>`);
+ const form=document.getElementById('manualForm'),search=form.querySelector('#batchIngredientSearch'),results=form.querySelector('#batchIngredientResults'),host=form.querySelector('#batchIngredientRows'),submit=form.querySelector('#batchIngredientSubmit'),error=form.querySelector('#batchIngredientError');
+ function updateCount(){form.querySelector('#batchIngredientCount').textContent=selected.size+' selected';submit.disabled=!selected.size;submit.textContent=selected.size?'＋ Add '+selected.size+' ingredient'+(selected.size===1?'':'s'):'＋ Add to shopping list';}
+ function remove(id){selected.get(id)?.remove();selected.delete(id);updateCount();showResults();}
+ function add(ing){
+  if(selected.has(ing.id)){remove(ing.id);return;}
+  const spice=isSpice(ing),unit=manualShoppingDefaultUnit(ing),row=document.createElement('div');
+  row.className='batch-ingredient-row';
+  row.innerHTML=`<div class="batch-ingredient-heading"><div><b>${esc(ing.name)}</b><div class="smalltext">${esc(spice?'Spice · no quantity needed':ing.category||'Other')}</div></div><button type="button" class="btn danger small" aria-label="Remove ${esc(ing.name)}">×</button></div>`+(spice?'':`<div class="two"><div class="field"><label>Quantity</label><input class="batch-qty" type="number" min="0.000001" step="any" required placeholder="Qty"></div><div class="field"><label>Unit</label>${unitSelect('batchUnit',unit,'batch-unit')}</div></div>`);
+  row.querySelector('button').addEventListener('click',()=>remove(ing.id));
+  host.append(row);selected.set(ing.id,row);enhanceSelects(row);updateCount();showResults();
+ }
+ function showResults(){
+  const query=search.value.trim(),matches=sorted.filter(ing=>!query||fieldWordMatch(ing.name+' '+(ing.aliases||[]).join(' '),query)).slice(0,40);
+  results.replaceChildren();
+  for(const ing of matches){
+   const b=document.createElement('button');b.type='button';b.className='batch-ingredient-option';b.setAttribute('aria-pressed',String(selected.has(ing.id)));
+   b.innerHTML='<span>'+esc(ing.name)+'<small>'+esc(ing.category||'Other')+'</small></span><strong>'+(selected.has(ing.id)?'✓':'+')+'</strong>';
+   b.addEventListener('click',()=>add(ing));results.append(b);
+  }
+  if(!matches.length)results.textContent='No matching ingredients.';
+ }
+ search.addEventListener('input',showResults);
+ search.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();results.querySelector('button')?.click();}});
  form.onsubmit=e=>{
-  e.preventDefault();
-  const ing=ingById(form.elements.ingredient.value),value=form.elements.qty.value,qty=Number(value);
-  const unit=selectedUnit(form.elements.unit);
-  if(!ing){alert('Choose an ingredient from the suggestions.');return}
-  const spice=isSpice(ing);
-  if(!spice&&(!value||!Number.isFinite(qty)||qty<=0)){alert('Enter a quantity greater than zero.');return}
-  if(!spice&&!unit){alert('Choose a unit or enter a custom unit.');return}
-  if(!spice||!db.shopping.some(x=>x.ingredientId===ing.id&&!x.checked))db.shopping.push({id:uid(),ingredientId:ing.id,name:ing.name,category:spice?'Spices':String(ing.category||'Other').trim()||'Other',qty:spice?0:qty,unit:spice?'':unit,checked:false,source:'manual',price:0});
-  shopFilter='All';save();closeModal();render();
+  e.preventDefault();error.textContent='';
+  if(!selected.size)return;
+  let items;
+  try{items=buildManualShoppingBatch([...selected].map(([id,row])=>({id,qty:row.querySelector('.batch-qty')?.value,unit:selectedUnit(row.querySelector('.batch-unit'))})),db.shopping);}
+  catch(err){error.textContent=err.message;return;}
+  db.shopping.push(...items);shopFilter='All';save();closeModal();render();
  };
+ showResults();updateCount();
 }
 function addExtraPurchaseRow(){
  let host=document.getElementById('extraPurchases');if(!host)return;
