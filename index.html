@@ -850,7 +850,7 @@ body{
 </style>
 </head>
 <body><div class="app">
-<header class="top"><div class="brand"><img class="logo brand-logo" src="./icon-192.png?v=3.7.1" width="48" height="48" alt="House & Cart icon"><div class="brand-copy"><div class="brand-name-row"><span style="font-family:Georgia,serif;font-size:27px;font-weight:500;letter-spacing:-1px">House &amp; Cart</span><span class="version-tag" id="appVersion" title="House & Cart app version">v3.9.14</span></div><div class="smalltext" style="letter-spacing:2px;text-transform:uppercase;font-size:9px">Your everyday home companion</div></div></div><div class="top-actions"><span class="pill" id="saveState">Saved on this device</span><button class="btn soft small" onclick="exportData()">Export backup</button><button class="btn ghost small" onclick="document.getElementById('importFile').click()">Import</button><button class="btn green small" onclick="openCloudAccount()">Account & sync</button><input id="importFile" type="file" accept=".json,application/json" hidden></div><button class="mobile-menu-button" type="button" aria-label="Open app menu" onclick="openMoreMenu()">☰ <span>Menu</span></button></header>
+<header class="top"><div class="brand"><img class="logo brand-logo" src="./icon-192.png?v=3.7.1" width="48" height="48" alt="House & Cart icon"><div class="brand-copy"><div class="brand-name-row"><span style="font-family:Georgia,serif;font-size:27px;font-weight:500;letter-spacing:-1px">House &amp; Cart</span><span class="version-tag" id="appVersion" title="House & Cart app version">v3.9.15</span></div><div class="smalltext" style="letter-spacing:2px;text-transform:uppercase;font-size:9px">Your everyday home companion</div></div></div><div class="top-actions"><span class="pill" id="saveState">Saved on this device</span><button class="btn soft small" onclick="exportData()">Export backup</button><button class="btn ghost small" onclick="document.getElementById('importFile').click()">Import</button><button class="btn green small" onclick="openCloudAccount()">Account & sync</button><input id="importFile" type="file" accept=".json,application/json" hidden></div><button class="mobile-menu-button" type="button" aria-label="Open app menu" onclick="openMoreMenu()">☰ <span>Menu</span></button></header>
 <div class="row mode-row" style="justify-content:space-between;align-items:center;margin:8px 0 4px"><div class="tabs" style="margin:0"><button id="modeKitchen" class="active" onclick="setMode('kitchen')">🍋 Kitchen</button><button id="modeCare" onclick="setMode('care')">🧺 Home care</button></div><div class="cloud-status-bar" id="cloudStatusBar" data-state="local" role="status" aria-live="polite"><span class="cloud-status-dot" aria-hidden="true"></span><strong id="cloudStatusLabel">Saved on this device</strong></div><span class="smalltext" id="modeCaption">Recipes, ingredients & weekly rituals</span></div><nav class="nav" id="nav" aria-label="Main navigation"><button data-view="home" class="active">⌂ Overview</button><button data-view="meals">♡ Recipes</button><button data-view="plan">▦ Planner</button><button data-view="shop">🛒 Shopping</button><button data-view="kitchen">🥬 Pantry</button><button data-view="history">↗ History</button><button data-view="cookable" style="display:none">✨ What can I cook?</button><button data-view="budget" style="display:none">◉ Budget</button></nav>
 <main id="main" tabindex="-1"></main></div><nav id="mobileNav" class="mobile-bottom-nav" aria-label="Mobile navigation"></nav>
 <div class="modalback" id="modalback"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="modtitle" tabindex="-1"><div class="modalhead"><h2 id="modtitle">Edit</h2><button class="x" type="button" aria-label="Close dialog" onclick="closeModal()">✕</button></div><div id="modbody"></div></div></div>
@@ -1606,8 +1606,8 @@ function autocompleteChoose(input,entry){
   input.dispatchEvent(new Event('input',{bubbles:true}));
   input.dispatchEvent(new Event('change',{bubbles:true}));
  }
- autocompleteClose(input);
  input.focus({preventScroll:true});
+ autocompleteClose(input);
 }
 function autocompleteShow(input){
  const host=input.closest('.app-autocomplete'),panel=host?.querySelector('.app-autocomplete-menu');
@@ -1637,13 +1637,16 @@ function autocompleteShow(input){
     detail.textContent=entry.detail;
     button.append(detail);
    }
-   // Pick on pointerdown so Android cannot blur the input or swallow the tap.
+   // Keep the option mounted until click completes: removing it on pointerdown
+   // can retarget the mobile tap to the modal backdrop or another control.
    button.addEventListener('pointerdown',e=>{
     if(e.pointerType==='mouse'&&e.button!==0)return;
     e.preventDefault();
-    autocompleteChoose(input,entry);
+    e.stopPropagation();
    });
-   button.addEventListener('click',()=>{
+   button.addEventListener('click',e=>{
+    e.preventDefault();
+    e.stopPropagation();
     if(host.classList.contains('autocomplete-open'))autocompleteChoose(input,entry);
    });
    panel.append(button);
@@ -1702,8 +1705,8 @@ document.addEventListener('keydown',e=>{
   buttons.forEach((b,i)=>{b.classList.toggle('active',i===next);b.setAttribute('aria-selected',String(i===next))});
   input.setAttribute('aria-activedescendant',buttons[next].id);
   buttons[next].scrollIntoView({block:'nearest'});
- }else if(e.key==='Enter'&&selected>=0){
-  e.preventDefault();buttons[selected].click();
+ }else if(e.key==='Enter'){
+  e.preventDefault();buttons[selected>=0?selected:0].click();
  }
 });
 document.addEventListener('pointerdown',e=>{
@@ -2105,7 +2108,10 @@ function go(v){view=v;render()}
 function exportData(){let blob=new Blob([JSON.stringify(db,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='house-and-cart-backup-'+new Date().toISOString().slice(0,10)+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);localStorage.setItem(BACKUP_AT_KEY,new Date().toISOString());updateBackupNotice()}
 document.getElementById('importFile').onchange=async e=>{let f=e.target.files[0];if(!f)return;try{let x=JSON.parse(await f.text());if(!Array.isArray(x.meals)||!Array.isArray(x.ingredients))throw Error('Not a Meal Cart backup');if(!confirm('Replace this device data with the imported backup?'))return;if(!snapshotForRecovery('Before manual backup import')){alert('A recovery snapshot could not be saved. Please download your current backup first.');return}const restored={...fresh(),...x};localStorage.setItem(KEY,JSON.stringify(restored));db=restored;migrateCareData();save();render();alert('Backup imported.')}catch(err){alert(err.message)}e.target.value=''};
 document.getElementById('nav').onclick=e=>{let b=e.target.closest('button[data-view]');if(b)go(b.dataset.view)};
-document.getElementById('modalback').addEventListener('click',e=>{if(e.target.id==='modalback')closeModal()});
+const modalBackdrop=document.getElementById('modalback');
+let backdropPress=false;
+modalBackdrop.addEventListener('pointerdown',e=>{backdropPress=e.target===modalBackdrop},true);
+modalBackdrop.addEventListener('click',e=>{if(e.target===modalBackdrop&&backdropPress&&!document.getElementById('manualForm')?.closest('.modalback.show'))closeModal();backdropPress=false});
 autoRestock();autoAddOutOfStockSpices();render();save();initializeCloud();
 </script>
 <style>
